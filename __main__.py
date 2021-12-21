@@ -26,38 +26,46 @@ from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
 from traceback import print_exception
 from warnings import warn
 
+from collections import OrderedDict
+
 from audiostat import *
+from asconfig import *
 
 
 class MainWnd():
     PAGE_START, PAGE_PROGRESS, PAGE_STATS = range(3)
 
     # столбцы TreeModel дерева статистики
-    STC_NAME, STC_SAMPLERATE, STC_CHANNELS, STC_BITSPERSAMPLE, STC_BITRATE, STC_LOSSY, STC_MISSINGTAGS = range(7)
+    STC_NAME, STC_SAMPLERATE, STC_CHANNELS, STC_BITSPERSAMPLE,\
+    STC_BITRATE, STC_LOSSY, STC_MISSINGTAGS, STC_LOWRES = range(8)
 
     def wnd_destroy(self, widget, data=None):
         #!!!
         self.stopScanning = True
+
+        #!!!
+        self.cfg.save()
+
         Gtk.main_quit()
 
-    def __init__(self):
+    def __init__(self, cfg):
+        self.cfg = cfg
+
         resldr = get_resource_loader()
         uibldr = get_gtk_builder(resldr, 'audiostat.ui')
 
         self.window = uibldr.get_object('wndMain')
 
-        labTitle, labSubTitle = get_ui_widgets(uibldr,
-            'labTitle', 'labSubTitle')
+        headerBar = uibldr.get_object('headerBar')
 
-        self.window.set_title(TITLE_VERSION)
-        labTitle.set_text(TITLE)
-        labSubTitle.set_text(VERSION)
+        headerBar.set_title(TITLE)
+        headerBar.set_subtitle('v%s' % VERSION)
 
         isize = 128 #!!!
         self.window.set_icon(resldr.load_pixbuf('images/audiostat.svg',
             isize, isize))
 
-        self.warningIcon = load_system_icon('dialog-warning', Gtk.IconSize.MENU, False, symbolic=True)
+        self.markIcon = load_system_icon('object-select-symbolic', Gtk.IconSize.MENU, False, symbolic=True)
 
         #
         self.pages, self.btnRun = get_ui_widgets(uibldr,
@@ -76,24 +84,23 @@ class MainWnd():
 
         # stats page
         swStats = uibldr.get_object('swStats')
-        swStats.set_min_content_height(WIDGET_BASE_HEIGHT * 24)
-        swStats.set_size_request(-1, WIDGET_BASE_HEIGHT * 24)
+        _ = WIDGET_BASE_HEIGHT * 32
+        swStats.set_min_content_height(_)
+        swStats.set_size_request(-1, _)
 
         self.tvStats = TreeViewShell.new_from_uibuilder(uibldr, 'tvStats')
-        self.tvStats.view.set_size_request(WIDGET_BASE_WIDTH * 96, -1)
+        self.tvStats.view.set_size_request(WIDGET_BASE_WIDTH * 128, -1)
 
         self.tvSummary = TreeViewShell.new_from_uibuilder(uibldr, 'tvSummary')
+        self.tvSampleRates = TreeViewShell.new_from_uibuilder(uibldr, 'tvSampleRates')
+        self.tvBitsPerSample = TreeViewShell.new_from_uibuilder(uibldr, 'tvBitsPerSample')
 
         #
-        #TODO сделать загрузку/сохранение текущих параметров
-        self.fcStartDir.set_current_folder(os.path.expanduser('~'))
-        self.entFileTypes.set_text(' '.join(sorted(AUDIO_FILE_TYPES)))
+        self.fcStartDir.set_current_folder(cfg.lastDirectory)
+        self.entFileTypes.set_text(filetypes_to_str(self.cfg.fileTypes))
 
         #
         self.stopScanning = False
-        self.progressFiles = 0
-        self.progressAudioFiles = 0
-        self.progressErrors = 0
 
         self.__go_to_start_page()
 
@@ -102,9 +109,29 @@ class MainWnd():
 
     def scan_statistics(self):
         self.stopScanning = False
+
         self.progressFiles = 0
         self.progressAudioFiles = 0
         self.progressErrors = 0
+
+        # ключи - значения AudioStreamInfo.sampleRate, значения - кол-во файлов
+        totalSampleRates = dict()
+
+        # ключи - значения AudioStreamInfo.bitsPerSample, значения - кол-во файлов
+        totalBitsPerSample = dict()
+
+        # прочая статистика
+        TS_LOSSY = 'Lossy'
+        TS_LOWRES = 'Low res.'
+        TS_MISTAGS = 'Missing tags'
+
+        totalSummary = OrderedDict()
+        totalSummary[TS_LOSSY] = 0
+        totalSummary[TS_LOWRES] = 0
+        totalSummary[TS_MISTAGS] = 0
+
+        #
+        self.cfg.fileTypes = str_to_filetypes(self.entFileTypes.get_text())
 
         def __scan_directory(destNode, fdir):
             """Обход подкаталога.
@@ -113,21 +140,9 @@ class MainWnd():
                 destNode    - Gtk.TreeIter,
                 fdir        - строка, каталог.
 
-            Возвращает кортеж трёх элементов:
-                1й:         количество аудиофайлов и подкаталогов в каталоге;
-                2й и 3й:    экземпляры AudioFileInfo с минимальными
-                            и максимальными параметрами найденных файлов."""
+            Возвращает экземпляр AudioDirectoryInfo."""
 
-            dirNFiles = 0
-
-            dirMinInfo = AudioFileInfo()
-            # !!!
-            dirMinInfo.sampleRate = 100000000
-            dirMinInfo.channels = 16384
-            dirMinInfo.bitsPerSample = 1024
-            dirMinInfo.bitRate = 1000000000
-
-            dirMaxInfo = AudioFileInfo()
+            dirinfo = AudioDirectoryInfo()
 
             self.labProgressPath.set_text(fdir)
             print('Scanning "%s"' % fdir, file=sys.stderr)
@@ -137,12 +152,6 @@ class MainWnd():
 
                 self.progressErrors += 1
                 self.labProgressErrors.set_text(str(self.progressErrors))
-
-            def __int_val_k(i):
-                return '?' if not i else '%.1f' % (i / 1000.0)
-
-            def __int_val(i):
-                return '?' if not i else str(i)
 
             #TODO возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
             for fname in os.listdir(fdir):
@@ -155,68 +164,79 @@ class MainWnd():
                     # столбцы TreeStore:
                     # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags
                     subNode = self.tvStats.store.append(destNode,
-                        (fname, '', '', '', '', None, None))
+                        (fname, '', '', '', '', None, None, None))
 
-                    subNFiles, subMinInfo, subMaxInfo = __scan_directory(subNode, fpath)
+                    subinfo = __scan_directory(subNode, fpath)
 
-                    if not subNFiles:
+                    if not subinfo.nFiles:
                         # нафига нам пустые каталоги?
                         self.tvStats.store.remove(subNode)
                     else:
-                        dirNFiles += 1
-
-                        if dirMinInfo.sampleRate > subMinInfo.sampleRate:
-                            dirMinInfo.sampleRate = subMinInfo.sampleRate
-
-                        if dirMaxInfo.sampleRate < subMaxInfo.sampleRate:
-                            dirMaxInfo.sampleRate = subMaxInfo.sampleRate
-
-                        #TODO добавить проверки прочих полей
-                        warn('добавить проверки прочих полей')
+                        dirinfo.update_from_dir(subinfo)
 
                         # дополняем запись прожёванного каталога
                         self.tvStats.store.set(subNode,
-                            (self.STC_SAMPLERATE, self.STC_CHANNELS, self.STC_BITSPERSAMPLE, self.STC_BITRATE, self.STC_LOSSY, self.STC_MISSINGTAGS),
-                            ('%s…%s' % (__int_val_k(subMinInfo.sampleRate), __int_val_k(subMaxInfo.sampleRate)),
-                             '%s…%s' % (__int_val(subMinInfo.channels), __int_val(subMaxInfo.channels)),
-                             '%s…%s' % (__int_val(subMinInfo.bitsPerSample), __int_val(subMaxInfo.bitsPerSample)),
-                             '%s…%s' % (__int_val_k(subMinInfo.bitRate), __int_val_k(subMaxInfo.bitRate)),
-                             None if not subMinInfo.lossy else self.warningIcon,
-                             None if not subMinInfo.missingTags else self.warningIcon))
+                            (self.STC_SAMPLERATE, self.STC_CHANNELS,
+                             self.STC_BITSPERSAMPLE, self.STC_BITRATE,
+                             self.STC_LOSSY, self.STC_MISSINGTAGS,
+                             self.STC_LOWRES),
+                            (disp_int_range_k(subinfo.minInfo.sampleRate, subinfo.maxInfo.sampleRate),
+                             disp_int_range(subinfo.minInfo.channels, subinfo.maxInfo.channels),
+                             disp_int_range(subinfo.minInfo.bitsPerSample, subinfo.maxInfo.bitsPerSample),
+                             disp_int_range_k(subinfo.minInfo.bitRate, subinfo.maxInfo.bitRate),
+                             disp_bool(subinfo.minInfo.lossy, self.markIcon),
+                             disp_bool(subinfo.minInfo.missingTags, self.markIcon),
+                             disp_bool(subinfo.minInfo.lowRes, self.markIcon)))
+
                 else:
                     self.progressFiles += 1
                     self.labProgressFiles.set_text(str(self.progressFiles))
 
-                    r = get_audio_file_info(fpath)
+                    r = get_audio_file_info(fpath, self.cfg.fileTypes)
 
                     if r.error:
                         'error reading file "%s" - %s' % (fname, r.error)
                     elif r.isAudio:
-                        dirNFiles += 1
+                        dirinfo.update_from_file(r)
 
-                        if r.sampleRate < dirMinInfo.sampleRate:
-                            dirMinInfo.sampleRate = r.sampleRate
+                        # статистика по sampleRate
+                        if r.sampleRate in totalSampleRates:
+                            totalSampleRates[r.sampleRate] += 1
+                        else:
+                            totalSampleRates[r.sampleRate] = 1
 
-                        if r.sampleRate > dirMaxInfo.sampleRate:
-                            dirMaxInfo.sampleRate = r.sampleRate
+                        # статистика по bitsPerSample
+                        if r.bitsPerSample in totalBitsPerSample:
+                            totalBitsPerSample[r.bitsPerSample] += 1
+                        else:
+                            totalBitsPerSample[r.bitsPerSample] = 1
 
-                        #TODO добавить проверки прочих полей
-                        warn('добавить проверки прочих полей')
+                        # прочая статистика
+                        if r.lossy:
+                            totalSummary[TS_LOSSY] += 1
 
+                        if r.lowRes:
+                            totalSummary[TS_LOWRES] += 1
+
+                        if r.missingTags:
+                            totalSummary[TS_MISTAGS] += 1
+
+                        #
                         self.progressAudioFiles += 1
                         self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
 
                         # захерачим файл в статистику
                         # столбцы TreeStore:
-                        # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags
+                        # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags, lowres
                         self.tvStats.store.append(destNode,
                             (fname,
-                             __int_val_k(r.sampleRate),
-                             __int_val(r.channels),
-                             __int_val(r.bitsPerSample),
-                             __int_val_k(r.bitRate),
-                             None if not r.lossy else self.warningIcon,
-                             None if not r.missingTags else self.warningIcon))
+                             disp_int_val_k(r.sampleRate),
+                             disp_int_val(r.channels),
+                             disp_int_val(r.bitsPerSample),
+                             disp_int_val_k(r.bitRate),
+                             disp_bool(r.lossy, self.markIcon),
+                             disp_bool(r.missingTags, self.markIcon),
+                             disp_bool(r.lowRes, self.markIcon)))
 
                     #error, lossy, mime, sampleRate, channels, bitsPerSample, missingTags
 
@@ -224,24 +244,18 @@ class MainWnd():
                     self.progressBar.pulse()
                     flush_gtk_events()
 
-            return (dirNFiles, dirMinInfo, dirMaxInfo)
+            return dirinfo
 
         #
         # собираем статистику
         #
-        try:
-            self.tvStats.refresh_begin()
+        self.tvStats.refresh_begin()
 
-            _, totalMinInfo, totalMaxInfo = __scan_directory(None, self.fcStartDir.get_current_folder())
+        self.cfg.lastDirectory = self.fcStartDir.get_current_folder()
+        dirinfo = __scan_directory(None, self.cfg.lastDirectory)
 
-            self.tvStats.sortColumn = self.STC_NAME
-            self.tvStats.refresh_end()
-        except Exception as ex:
-            print_exception(*sys.exc_info())
-            es = 'Error: %s' % repr(ex)
-            msg_dialog(self.window, 'Error', es)
-            self.stopScanning = True
-            self.__go_to_start_page()
+        self.tvStats.sortColumn = self.STC_NAME
+        self.tvStats.refresh_end()
 
         if self.stopScanning:
             self.__go_to_start_page()
@@ -251,18 +265,36 @@ class MainWnd():
         # вроде как всё нормально - показываем статистику
         #
 
-        # заполняем итоговую таблицу
-        def __add_summary(key, value):
-            self.tvSummary.store.append((key, str(value)))
+        def fill_summary_table(srcd, tv, tostr):
+            __pcts = lambda n: int(float(n) / self.progressAudioFiles * 100.0)
+            __s_pcts = lambda n, p: '%d (%d%%)' % (n, p)
 
-        self.tvSummary.refresh_begin()
+            tv.refresh_begin()
 
-        __add_summary('Total files found:', self.progressFiles)
-        __add_summary('Audio files:', self.progressAudioFiles)
-        #TODO добавить счётчики по метаданным
-        __add_summary('Errors:', self.progressErrors)
+            for param, nfiles in sorted(srcd.items()):
+                if param != 0:
+                    pcts = __pcts(nfiles)
+                    tv.store.append((tostr(param),
+                        __s_pcts(nfiles, pcts),
+                        pcts))
 
-        self.tvSummary.refresh_end()
+            # сюда попадают файлы, где нет соотв. параметра в метаданных
+            if 0 in srcd:
+                pcts = __pcts(nfiles)
+                tv.store.append(('other',
+                    __s_pcts(nfiles, pcts),
+                    __pcts(nfiles)))
+
+            tv.refresh_end()
+
+        # заполняем таблицу sampleRates
+        fill_summary_table(totalSampleRates, self.tvSampleRates, disp_int_val_k)
+
+        # заполняем таблицу bitsPerSample
+        fill_summary_table(totalBitsPerSample, self.tvBitsPerSample, disp_int_val)
+
+        # заполняем прочую статистику
+        fill_summary_table(totalSummary, self.tvSummary, str)
 
         #
         self.btnRun.set_label('Scan other directory')
@@ -286,12 +318,27 @@ class MainWnd():
 
             self.__go_to_start_page()
 
+    def handle_unhandled(self, exc_type, exc_value, exc_traceback):
+        # дабы не зациклиться, если че рухнет в этом обработчике
+        sys.excepthook = sys.__excepthook__
+
+        msg = 'Unhandled exception - %s' % exc_type.__name__
+
+        print('** %s' % msg, file=sys.stderr)
+        print_exception(exc_type, exc_value, exc_traceback)
+
+        msg_dialog(self.window, 'Error', msg)
+
+        sys.exit(255)
+
     def main(self):
+        sys.excepthook = self.handle_unhandled
         Gtk.main()
 
 
 def main():
-    MainWnd().main()
+    cfg = Config()
+    MainWnd(cfg).main()
 
     return 0
 

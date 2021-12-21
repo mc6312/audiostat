@@ -2,12 +2,34 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkListStore" id="lstoreSummary">
+  <object class="GtkListStore" id="lstoreBitsPerSample">
     <columns>
-      <!-- column-name key -->
+      <!-- column-name label -->
+      <column type="gchararray"/>
+      <!-- column-name text -->
       <column type="gchararray"/>
       <!-- column-name value -->
+      <column type="guint"/>
+    </columns>
+  </object>
+  <object class="GtkListStore" id="lstoreSampleRates">
+    <columns>
+      <!-- column-name label -->
       <column type="gchararray"/>
+      <!-- column-name text -->
+      <column type="gchararray"/>
+      <!-- column-name value -->
+      <column type="guint"/>
+    </columns>
+  </object>
+  <object class="GtkListStore" id="lstoreSummary">
+    <columns>
+      <!-- column-name label -->
+      <column type="gchararray"/>
+      <!-- column-name text -->
+      <column type="gchararray"/>
+      <!-- column-name value -->
+      <column type="guint"/>
     </columns>
   </object>
   <object class="GtkTreeStore" id="tstoreStats">
@@ -25,6 +47,8 @@
       <!-- column-name lossy -->
       <column type="GdkPixbuf"/>
       <!-- column-name missingtags -->
+      <column type="GdkPixbuf"/>
+      <!-- column-name lowres -->
       <column type="GdkPixbuf"/>
     </columns>
   </object>
@@ -309,10 +333,10 @@
                         <property name="title" translatable="yes">Sample
 rate
 (kHz)</property>
-                        <property name="alignment">1</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererText" id="crStatsSampleRate">
-                            <property name="alignment">right</property>
+                            <property name="xalign">1</property>
                           </object>
                           <attributes>
                             <attribute name="text">1</attribute>
@@ -322,11 +346,12 @@ rate
                     </child>
                     <child>
                       <object class="GtkTreeViewColumn" id="colStatsChannels">
-                        <property name="title" translatable="yes">Channels</property>
-                        <property name="alignment">1</property>
+                        <property name="title" translatable="yes">Chan-
+nels</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererText" id="crStatsChannels">
-                            <property name="alignment">right</property>
+                            <property name="xalign">1</property>
                           </object>
                           <attributes>
                             <attribute name="text">2</attribute>
@@ -339,10 +364,10 @@ rate
                         <property name="title" translatable="yes">Bits
 per
 sample</property>
-                        <property name="alignment">1</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererText" id="crStatsBits">
-                            <property name="alignment">right</property>
+                            <property name="xalign">1</property>
                           </object>
                           <attributes>
                             <attribute name="text">3</attribute>
@@ -355,10 +380,10 @@ sample</property>
                         <property name="title" translatable="yes">Bit
 rate
 (kBits)</property>
-                        <property name="alignment">1</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererText" id="crStatsBitrate">
-                            <property name="alignment">right</property>
+                            <property name="xalign">1</property>
                           </object>
                           <attributes>
                             <attribute name="text">4</attribute>
@@ -369,7 +394,7 @@ rate
                     <child>
                       <object class="GtkTreeViewColumn" id="colStatsLossy">
                         <property name="title" translatable="yes">Lossy</property>
-                        <property name="alignment">1</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererPixbuf" id="crStatsLossy"/>
                           <attributes>
@@ -379,10 +404,23 @@ rate
                       </object>
                     </child>
                     <child>
+                      <object class="GtkTreeViewColumn" id="colStatsLowRes">
+                        <property name="title" translatable="yes">Low
+res.</property>
+                        <property name="alignment">0.5</property>
+                        <child>
+                          <object class="GtkCellRendererPixbuf" id="crStatsLowRes"/>
+                          <attributes>
+                            <attribute name="pixbuf">7</attribute>
+                          </attributes>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkTreeViewColumn" id="colStatsMissingTags">
                         <property name="title" translatable="yes">Mis.
 tags</property>
-                        <property name="alignment">1</property>
+                        <property name="alignment">0.5</property>
                         <child>
                           <object class="GtkCellRendererPixbuf" id="crStatsMissingTags"/>
                           <attributes>
@@ -401,39 +439,182 @@ tags</property>
               </packing>
             </child>
             <child>
-              <object class="GtkTreeView" id="tvSummary">
-                <property name="height-request">48</property>
+              <object class="GtkBox" id="boxSummary">
                 <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="model">lstoreSummary</property>
-                <property name="headers-visible">False</property>
-                <property name="enable-search">False</property>
-                <property name="show-expanders">False</property>
-                <property name="enable-grid-lines">both</property>
-                <child internal-child="selection">
-                  <object class="GtkTreeSelection"/>
-                </child>
+                <property name="can-focus">False</property>
+                <property name="spacing">4</property>
                 <child>
-                  <object class="GtkTreeViewColumn" id="colSummaryKey">
-                    <property name="title" translatable="yes">key</property>
+                  <object class="GtkFrame" id="frSampleRates">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkCellRendererText" id="crSummaryKey"/>
-                      <attributes>
-                        <attribute name="text">0</attribute>
-                      </attributes>
+                      <object class="GtkTreeView" id="tvSampleRates">
+                        <property name="height-request">48</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="model">lstoreSampleRates</property>
+                        <property name="headers-visible">False</property>
+                        <property name="headers-clickable">False</property>
+                        <property name="show-expanders">False</property>
+                        <property name="enable-grid-lines">both</property>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colSRLabel">
+                            <property name="title" translatable="yes">Sample rates</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="crSRLabel"/>
+                              <attributes>
+                                <attribute name="text">0</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colSRValue">
+                            <child>
+                              <object class="GtkCellRendererProgress" id="crSRValue">
+                                <property name="text-xalign">1</property>
+                              </object>
+                              <attributes>
+                                <attribute name="text">1</attribute>
+                                <attribute name="value">2</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Sample rates</property>
+                      </object>
                     </child>
                   </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
                 </child>
                 <child>
-                  <object class="GtkTreeViewColumn" id="colSummaryValue">
-                    <property name="title" translatable="yes">value</property>
+                  <object class="GtkFrame" id="frBitsPerSample">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkCellRendererText" id="crSummaryValue"/>
-                      <attributes>
-                        <attribute name="text">1</attribute>
-                      </attributes>
+                      <object class="GtkTreeView" id="tvBitsPerSample">
+                        <property name="height-request">48</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="model">lstoreBitsPerSample</property>
+                        <property name="headers-visible">False</property>
+                        <property name="headers-clickable">False</property>
+                        <property name="search-column">0</property>
+                        <property name="show-expanders">False</property>
+                        <property name="enable-grid-lines">both</property>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colBPSLabel">
+                            <property name="title" translatable="yes">Bits per samples</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="crBPSLabel"/>
+                              <attributes>
+                                <attribute name="text">0</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colBPSValue">
+                            <child>
+                              <object class="GtkCellRendererProgress" id="crBPSValue">
+                                <property name="text-xalign">1</property>
+                              </object>
+                              <attributes>
+                                <attribute name="text">1</attribute>
+                                <attribute name="value">2</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Bits per sample</property>
+                      </object>
                     </child>
                   </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkFrame" id="frSummary">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">in</property>
+                    <child>
+                      <object class="GtkTreeView" id="tvSummary">
+                        <property name="height-request">48</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="model">lstoreSummary</property>
+                        <property name="headers-visible">False</property>
+                        <property name="headers-clickable">False</property>
+                        <property name="search-column">0</property>
+                        <property name="show-expanders">False</property>
+                        <property name="enable-grid-lines">both</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colSumLabel">
+                            <property name="title" translatable="yes">Summary</property>
+                            <child>
+                              <object class="GtkCellRendererText" id="crSumLabel"/>
+                              <attributes>
+                                <attribute name="text">0</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkTreeViewColumn" id="colSumValue">
+                            <child>
+                              <object class="GtkCellRendererProgress" id="crSumValue">
+                                <property name="text-xalign">1</property>
+                              </object>
+                              <attributes>
+                                <attribute name="text">1</attribute>
+                                <attribute name="value">2</attribute>
+                              </attributes>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Summary</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
+                  </packing>
                 </child>
               </object>
               <packing>
@@ -450,52 +631,10 @@ tags</property>
       </object>
     </child>
     <child type="titlebar">
-      <object class="GtkHeaderBar" id="hdrBar">
+      <object class="GtkHeaderBar" id="headerBar">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="show-close-button">True</property>
-        <child type="title">
-          <object class="GtkBox">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="hexpand">True</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="GtkLabel" id="labTitle">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">...</property>
-                <property name="xalign">1</property>
-                <property name="yalign">1</property>
-                <attributes>
-                  <attribute name="weight" value="bold"/>
-                </attributes>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="labSubTitle">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label" translatable="yes">...</property>
-                <property name="xalign">1</property>
-                <property name="yalign">0</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="pack-type">end</property>
-          </packing>
-        </child>
         <child>
           <object class="GtkButton" id="btnRun">
             <property name="label" translatable="yes">Start</property>

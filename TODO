@@ -1,17 +1,7 @@
 __main__.py
-  MainWnd.__init__()
-     88: сделать загрузку/сохранение текущих параметров
-
-  MainWnd.scan_statistics()/__scan_directory()/__int_val()
-    147: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
-
-  MainWnd.scan_statistics()/__scan_directory()
-    174: добавить проверки прочих полей
-    203: добавить проверки прочих полей
-
-  MainWnd.scan_statistics()/__add_summary()
-    262: добавить счётчики по метаданным
+  MainWnd.scan_statistics()/__scan_directory()/__next_error()
+    156: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
 
 audiostat.py
-    44: пополнить LOSSLESS_MIMETYPES при необходимости
+    40: пополнить LOSSLESS_MIMETYPES при необходимости
 

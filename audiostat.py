@@ -22,7 +22,7 @@
 
 
 TITLE = 'AudioStat'
-VERSION = '0.1'
+VERSION = '1.0'
 TITLE_VERSION = '%s v%s' % (TITLE, VERSION)
 
 
@@ -33,10 +33,6 @@ import mutagen
 from collections import namedtuple
 from traceback import print_exception
 
-
-audiotype = namedtuple('audiotype', 'name lossy')
-"""name - строка, человекочитаемое название типа;
-lossy   - булевское, True для аудиоформатов, сжимающих с потерями."""
 
 AUDIO_FILE_TYPES = {'.wav', '.mp3', '.flac', '.ape', '.mpa', '.ogg',
     '.wv', '.ac3', '.aac', '.mka', '.dts', '.webm'}
@@ -55,20 +51,71 @@ TAGS = (('title', ('TITLE', 'TIT2')),
         )
 
 
-class AudioFileInfo():
-    __slots__ = 'isAudio', 'error', 'lossy', 'mime', 'sampleRate', 'channels', 'bitsPerSample', 'bitRate', 'missingTags'
+def disp_int_val_k(i):
+    return '?' if not i else '%.1f' % (i / 1000.0)
 
-    """Информация об аудиофайле:
-    isAudio         - булевское значение, False, если файл не является
-                      аудиофайлом известного формата; в этом случае все
-                      прочие поля должны игнорироваться;
-    error           - строка:
-                      при отсутствии ошибок: пустая строка или None,
-                      иначе - сообщение об ошибке; в последнем случае
-                      все последующие поля должны игнорироваться;
-    lossy           - булевское; True, если в файле использовано сжатие
-                      с потерями;
-    mime            - строка, mimetype;
+
+def disp_int_val(i):
+    return '?' if not i else str(i)
+
+
+def disp_int_range(a, b):
+    if a == b:
+        return disp_int_val(a)
+    else:
+        return '%s…%s' % (disp_int_val(a), disp_int_val(b))
+
+
+def disp_int_range_k(a, b):
+    if a == b:
+        return disp_int_val_k(a)
+    else:
+        return '%s - %s' % (disp_int_val_k(a), disp_int_val_k(b))
+
+
+def disp_bool(b, vtrue):
+    return None if not b else vtrue
+
+
+class __ReprBase():
+    """Класс-костыль для упрощения написания метода __repr__()
+    в классах с наследованием.
+    repr(obj) для экземпляра такого класса возвращает
+    "прилизанную" строку, содержащую отображения только нужных,
+    т.е. явно указанных в методе __repr_fields__() полей."""
+
+    def __repr_fields__(self):
+        """Костыль для наследования __repr__.
+        Должен возвращать список, содержащий кортежи из двух
+        элементов - названия поля и значения, при необходимости
+        преобразованного в строку в виде, пригодном для __repr__;
+        цельночисленные, булевские и т.п. значения следует
+        возвращать "как есть"."""
+
+        return []
+
+    def __repr__(self):
+        """Метод, """
+        def __rfld(name, value):
+            if isinstance(value, str):
+                s = '"%s"' % value
+            elif isinstance(value, int) or isinstance(value, float) or isinstance(value, bool):
+                s = str(value)
+            else:
+                s = repr(value)
+
+            return '%s=%s' % (name, s)
+
+        return '%s(%s)' % (self.__class__.__name__,
+            ', '.join(map(lambda f: __rfld(*f), self.__repr_fields__())))
+
+
+class AudioStreamInfo(__ReprBase):
+    """Информация об аудиопотоке:
+    lossy           - булевское; True, если использовано сжатие с потерями;
+    lowRes          - булевское; True, если поток не тянет по параметрам
+                      на крутой аудиофильский хайрез;
+                      параметры проверки см. в функции get_audio_file_info();
     sampleRate      - целое, частота сэмплирования,
     channels        - целое, кол-во каналов;
     bitsPerSample   - целое, разрядность; м.б. 0 (неизвестно) для MP3 и
@@ -78,36 +125,147 @@ class AudioFileInfo():
                       в случае отсутствия важных тэгов в метаданных файла."""
 
     def __init__(self):
-        self.isAudio = False
-        self.error = None
+        self.reset()
+
+    def reset(self):
         self.lossy = True
-        self.mime = ''
+        self.lowRes = True
         self.sampleRate = 0
         self.channels = 0
         self.bitsPerSample = 0
         self.bitRate = 0
-        self.missingTags = -1 # ваще нет тэгов
+        self.missingTags = 0
 
-    def __repr__(self):
-        if self.missingTags < 0:
-            mt = ['all']
-        else:
-            mt = []
-
-            for ix, (tname, _) in enumerate(TAGS):
-                if self.missingTags & (1 << ix):
-                    mt.append(tname)
-
-        return '%s(isAudio=%s, error=%s, lossy=%s, mime="%s", sampleRate=%d, channels=%d, bitsPerSample=%d, bitRate=%d, missingTags=<%s>)' % (self.__class__.__name__,
-            self.isAudio,
-            'None' if self.error is None else '"%s"' % self.error,
-            self.lossy,
-            self.mime,
-            self.sampleRate, self.channels, self.bitsPerSample, self.bitRate,
-            ', '.join(mt))
+    def __repr_fields__(self):
+        return [('lossy', self.lossy),
+                ('lowRes', self.lowRes),
+                ('sampleRate', self.sampleRate),
+                ('channels', self.channels),
+                ('bitsPerSample', self.bitsPerSample),
+                ('bitRate', self.bitRate),
+                ('missingTags', hex(self.missingTags))]
 
 
-def get_audio_file_info(fpath):
+class AudioFileInfo(AudioStreamInfo):
+    """Информация об аудиофайле:
+    isAudio         - булевское значение, False, если файл не является
+                      аудиофайлом известного формата; в этом случае все
+                      прочие поля должны игнорироваться;
+    error           - строка:
+                      при отсутствии ошибок: пустая строка или None,
+                      иначе - сообщение об ошибке; в последнем случае
+                      все последующие поля должны игнорироваться;
+    mime            - строка, mimetype;
+
+    Прочие поля наследуются от AudioStreamInfo."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.isAudio = False
+        self.error = None
+        self.mime = ''
+
+    def __repr_fields__(self):
+        return super().__repr_fields__() + [
+            ('isAudio', self.isAudio),
+            ('error', 'None' if self.error is None else '"%s"' % self.error),
+            ('mime', self.mime)]
+
+
+class AudioDirectoryInfo(__ReprBase):
+    """Класс для сбора статистики по каталогу с аудиофайлами.
+
+    minInfo, maxInfo - экземпляры AudioStreamInfo,
+    содержащие соответствующие значения после одного
+    или более вызовов метода update_from_file();
+
+    nFiles - целое, количество обработанных файлов."""
+
+    def __init__(self):
+        self.nFiles = 0
+        self.minInfo = AudioStreamInfo()
+        self.maxInfo = AudioStreamInfo()
+
+        self.reset()
+
+    def reset(self):
+        """Сброс счётчиков"""
+
+        self.nFiles = 0
+
+        self.minInfo.reset()
+        # в "минимальное" поле кладём максимальные допустимые значения!
+        self.minInfo.lossy = False
+        self.minInfo.lowRes = False
+
+        self.minInfo.sampleRate = 100000000
+        self.minInfo.channels = 16384
+        self.minInfo.bitsPerSample = 1024
+        self.minInfo.bitRate = 1000000000
+
+        self.maxInfo.reset()
+
+    def __update_min(self, nfo):
+        """Пополнение "минимальных" счётчиков из экземпляра
+        AudioStreamInfo."""
+
+        if self.minInfo.sampleRate > nfo.sampleRate:
+            self.minInfo.sampleRate = nfo.sampleRate
+
+        if self.minInfo.channels > nfo.channels:
+            self.minInfo.channels = nfo.channels
+
+        if self.minInfo.bitsPerSample > nfo.bitsPerSample:
+            self.minInfo.bitsPerSample = nfo.bitsPerSample
+
+        if self.minInfo.bitRate > nfo.bitRate:
+            self.minInfo.bitRate = nfo.bitRate
+
+    def __update_max(self, nfo):
+        """Пополнение "максимальных" счётчиков из экземпляра
+        AudioStreamInfo."""
+
+        if self.maxInfo.sampleRate < nfo.sampleRate:
+            self.maxInfo.sampleRate = nfo.sampleRate
+
+        if self.maxInfo.channels < nfo.channels:
+            self.maxInfo.channels = nfo.channels
+
+        if self.maxInfo.bitsPerSample < nfo.bitsPerSample:
+            self.maxInfo.bitsPerSample = nfo.bitsPerSample
+
+        if self.maxInfo.bitRate < nfo.bitRate:
+            self.maxInfo.bitRate = nfo.bitRate
+
+    def update_from_dir(self, other):
+        """Пополнение статистики из другого экземпляра
+        (напр. при рекурсивном обходе каталогов)."""
+
+        self.nFiles += 1
+
+        self.__update_min(other.minInfo)
+        self.__update_max(other.maxInfo)
+
+        self.minInfo.lossy |= other.minInfo.lossy
+        self.minInfo.lowRes |= other.minInfo.lowRes
+        self.minInfo.missingTags |= other.minInfo.missingTags
+
+    def update_from_file(self, nfo):
+        """Пополнение статистики.
+        nfo - экземпляр AudioFileInfo."""
+
+        self.nFiles += 1
+
+        self.__update_min(nfo)
+        self.__update_max(nfo)
+
+        self.minInfo.lossy |= nfo.lossy
+        self.minInfo.lowRes |= nfo.lowRes
+        self.minInfo.missingTags |= nfo.missingTags
+
+
+def get_audio_file_info(fpath, ftypes=AUDIO_FILE_TYPES):
     """Извлечение параметров потока и метаданных из аудиофайла.
     Возвращает экземпляр AudioFileInfo."""
 
@@ -118,7 +276,7 @@ def get_audio_file_info(fpath):
             return fallback
 
     nfo = AudioFileInfo()
-    if not os.path.splitext(fpath)[-1].lower() in AUDIO_FILE_TYPES:
+    if not os.path.splitext(fpath)[-1].lower() in ftypes:
         return nfo
 
     nfo.isAudio = True
@@ -153,6 +311,9 @@ def get_audio_file_info(fpath):
         nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
         nfo.bitRate = __get_info_fld(f.info, 'bitrate', 0)
 
+        # пока проверка "на хайрез" минимальная
+        nfo.lowRes = (nfo.bitsPerSample < 24) and (nfo.sampleRate < 88200)
+
     except Exception as ex:
         print_exception(*sys.exc_info())
         nfo.error = repr(ex)
@@ -177,4 +338,7 @@ def __test_scan_directory(path):
 if __name__ == '__main__':
     print('[debugging %s]' % __file__)
 
-    __test_scan_directory(os.path.expanduser('~/docs-private/misc'))
+    import asconfig
+
+    cfg = asconfig.Config()
+    __test_scan_directory(cfg.lastDirectory)
