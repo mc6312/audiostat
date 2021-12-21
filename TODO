@@ -1,6 +1,6 @@
 __main__.py
   MainWnd.scan_statistics()/__scan_directory()/__next_error()
-    156: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
+    167: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
 
 audiostat.py
     40: пополнить LOSSLESS_MIMETYPES при необходимости

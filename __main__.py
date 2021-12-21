@@ -19,11 +19,21 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>."""
 
 
-from gtktools import *
-from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
-#from gi.repository.GdkPixbuf import Pixbuf
-
+import sys
 from traceback import print_exception
+
+try:
+    from gtktools import *
+    from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
+    #from gi.repository.GdkPixbuf import Pixbuf
+
+    import mutagen
+except ImportError as ex:
+    print('** %s' % repr(ex))
+
+    msg_dialog(None, 'Import error', repr(ex))
+    sys.exit(255)
+
 from warnings import warn
 
 from collections import OrderedDict
@@ -48,8 +58,8 @@ class MainWnd():
 
         Gtk.main_quit()
 
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self, _cfg):
+        self.cfg = _cfg
 
         resldr = get_resource_loader()
         uibldr = get_gtk_builder(resldr, 'audiostat.ui')
@@ -68,8 +78,10 @@ class MainWnd():
         self.markIcon = load_system_icon('object-select-symbolic', Gtk.IconSize.MENU, False, symbolic=True)
 
         #
-        self.pages, self.btnRun = get_ui_widgets(uibldr,
-            'pages', 'btnRun')
+        self.pages, self.btnRun, self.boxFileCtls, self.btnCopyPath = get_ui_widgets(uibldr,
+            'pages', 'btnRun', 'boxFileCtls', 'btnCopyPath')
+
+        self.clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
         # start page
         self.fcStartDir, self.entFileTypes = get_ui_widgets(uibldr,
@@ -96,15 +108,14 @@ class MainWnd():
         self.tvBitsPerSample = TreeViewShell.new_from_uibuilder(uibldr, 'tvBitsPerSample')
 
         #
-        self.fcStartDir.set_current_folder(cfg.lastDirectory)
         self.entFileTypes.set_text(filetypes_to_str(self.cfg.fileTypes))
 
         #
         self.stopScanning = False
 
+        self.window.show_all()
         self.__go_to_start_page()
 
-        self.window.show_all()
         uibldr.connect_signals(self)
 
     def scan_statistics(self):
@@ -251,7 +262,10 @@ class MainWnd():
         #
         self.tvStats.refresh_begin()
 
+        print('*** Starting collecting statistics ***', file=sys.stderr)
         self.cfg.lastDirectory = self.fcStartDir.get_current_folder()
+        print('Searching audio files in %s' % self.cfg.lastDirectory, file=sys.stderr)
+
         dirinfo = __scan_directory(None, self.cfg.lastDirectory)
 
         self.tvStats.sortColumn = self.STC_NAME
@@ -299,10 +313,42 @@ class MainWnd():
         #
         self.btnRun.set_label('Scan other directory')
         self.pages.set_current_page(self.PAGE_STATS)
+        self.boxFileCtls.set_sensitive(True)
+        self.boxFileCtls.set_visible(True)
+
+    def selStats_changed(self, _):
+        self.btnCopyPath.set_sensitive(self.tvStats.get_selected_iter() is not None)
+
+    def copy_selected_path(self):
+        """Копирование полного пути выбранного файла или каталога
+        в буфер обмена."""
+
+        itr = self.tvStats.get_selected_iter()
+        if not itr:
+            return
+
+        path = []
+
+        while itr is not None:
+            path.insert(0, self.tvStats.store.get_value(itr, self.STC_NAME))
+
+            itr = self.tvStats.store.iter_parent(itr)
+
+        self.clipboard.set_text(os.path.join(self.cfg.lastDirectory, *path), -1)
+
+    def tvStats_row_activated(self, tv, path, col):
+        self.copy_selected_path()
+
+    def btnCopyPath_clicked(self, btn):
+        self.copy_selected_path()
 
     def __go_to_start_page(self):
+        self.fcStartDir.set_current_folder(self.cfg.lastDirectory)
         self.pages.set_current_page(self.PAGE_START)
         self.btnRun.set_label('Start')
+
+        self.boxFileCtls.set_visible(False)
+        self.boxFileCtls.set_sensitive(False)
 
     def btnRun_clicked(self, btn):
         p = self.pages.get_current_page()

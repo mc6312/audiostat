@@ -22,7 +22,7 @@
 
 
 TITLE = 'AudioStat'
-VERSION = '1.0'
+VERSION = '1.1'
 TITLE_VERSION = '%s v%s' % (TITLE, VERSION)
 
 

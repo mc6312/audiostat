@@ -2,6 +2,11 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkImage" id="imgBtnCopyPath">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="icon-name">edit-copy-symbolic</property>
+  </object>
   <object class="GtkListStore" id="lstoreBitsPerSample">
     <columns>
       <!-- column-name label -->
@@ -151,6 +156,7 @@
                   <object class="GtkBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="valign">center</property>
                     <property name="orientation">vertical</property>
                     <property name="spacing">4</property>
                     <child>
@@ -176,6 +182,7 @@
                       <object class="GtkGrid">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="halign">center</property>
                         <property name="hexpand">True</property>
                         <property name="row-spacing">4</property>
                         <property name="column-spacing">4</property>
@@ -310,8 +317,11 @@
                     <property name="headers-clickable">False</property>
                     <property name="enable-grid-lines">both</property>
                     <property name="enable-tree-lines">True</property>
+                    <signal name="row-activated" handler="tvStats_row_activated" swapped="no"/>
                     <child internal-child="selection">
-                      <object class="GtkTreeSelection"/>
+                      <object class="GtkTreeSelection" id="selStats">
+                        <signal name="changed" handler="selStats_changed" swapped="no"/>
+                      </object>
                     </child>
                     <child>
                       <object class="GtkTreeViewColumn" id="colStatsName">
@@ -459,6 +469,9 @@ tags</property>
                         <property name="headers-clickable">False</property>
                         <property name="show-expanders">False</property>
                         <property name="enable-grid-lines">both</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
                         <child>
                           <object class="GtkTreeViewColumn" id="colSRLabel">
                             <property name="title" translatable="yes">Sample rates</property>
@@ -516,6 +529,9 @@ tags</property>
                         <property name="search-column">0</property>
                         <property name="show-expanders">False</property>
                         <property name="enable-grid-lines">both</property>
+                        <child internal-child="selection">
+                          <object class="GtkTreeSelection"/>
+                        </child>
                         <child>
                           <object class="GtkTreeViewColumn" id="colBPSLabel">
                             <property name="title" translatable="yes">Bits per samples</property>
@@ -648,6 +664,36 @@ tags</property>
               <class name="suggested-action"/>
             </style>
           </object>
+        </child>
+        <child>
+          <object class="GtkBox" id="boxFileCtls">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="spacing">4</property>
+            <child>
+              <object class="GtkButton" id="btnCopyPath">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="image">imgBtnCopyPath</property>
+                <signal name="clicked" handler="btnCopyPath_clicked" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
         </child>
       </object>
     </child>

@@ -82,7 +82,7 @@ desktop:
 	@echo "Icon=$(shell realpath $(icondir)/$(iconfn))" >>$(desktopfn)
 	@echo "Type=Application" >>$(desktopfn)
 	@echo "StartupWMClass=$(basename)" >>$(desktopfn)
-	@echo "Categories=Office;Database;Finance" >>$(desktopfn)
+	@echo "Categories=Multimedia;Utilites" >>$(desktopfn)
 
 winiconfn:
 	convert -background transparent -density 600x600 -resize $(winiconsize)x$(winiconsize) $(imagedir)/$(iconfn) $(winiconfn)
