@@ -2,6 +2,26 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkAdjustment" id="adjEntFilterBitrateGreater">
+    <property name="lower">8</property>
+    <property name="upper">10000</property>
+    <property name="value">192</property>
+    <property name="step-increment">8</property>
+    <property name="page-increment">16</property>
+  </object>
+  <object class="GtkAdjustment" id="adjEntFilterBitrateLower">
+    <property name="lower">8</property>
+    <property name="upper">10000</property>
+    <property name="value">192</property>
+    <property name="step-increment">8</property>
+    <property name="page-increment">16</property>
+  </object>
+  <object class="GtkCheckButton" id="chkFFTall">
+    <property name="visible">True</property>
+    <property name="can-focus">True</property>
+    <property name="receives-default">False</property>
+    <property name="draw-indicator">True</property>
+  </object>
   <object class="GtkImage" id="imgBtnCopyPath">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -15,6 +35,14 @@
       <column type="gchararray"/>
       <!-- column-name value -->
       <column type="guint"/>
+    </columns>
+  </object>
+  <object class="GtkListStore" id="lstoreFilterFileTypes">
+    <columns>
+      <!-- column-name checked -->
+      <column type="gboolean"/>
+      <!-- column-name text -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkListStore" id="lstoreSampleRates">
@@ -71,7 +99,6 @@
           <object class="GtkBox" id="pageStart">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
             <property name="spacing">4</property>
             <child>
               <object class="GtkFrame">
@@ -85,56 +112,342 @@
                     <property name="can-focus">False</property>
                     <property name="border-width">4</property>
                     <property name="action">select-folder</property>
+                    <property name="create-folders">False</property>
                   </object>
                 </child>
                 <child type="label">
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Начать с каталога:</property>
+                    <property name="label" translatable="yes">Start from _directory:</property>
+                    <property name="use-underline">True</property>
+                    <property name="mnemonic-widget">fcStartDir</property>
                   </object>
                 </child>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="position">1</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkBox">
+              <object class="GtkFrame" id="frFilters">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="spacing">4</property>
+                <property name="label-xalign">0</property>
+                <property name="shadow-type">in</property>
                 <child>
+                  <object class="GtkBox" id="boxFilters">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="border-width">4</property>
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">4</property>
+                    <child>
+                      <object class="GtkFrame" id="frFilterFileTypes">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkScrolledWindow" id="swFilterFileTypes">
+                            <property name="height-request">128</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="border-width">4</property>
+                            <property name="hscrollbar-policy">never</property>
+                            <property name="shadow-type">in</property>
+                            <child>
+                              <object class="GtkTreeView" id="tvFilterFileTypes">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="model">lstoreFilterFileTypes</property>
+                                <property name="show-expanders">False</property>
+                                <property name="enable-grid-lines">both</property>
+                                <child internal-child="selection">
+                                  <object class="GtkTreeSelection"/>
+                                </child>
+                                <child>
+                                  <object class="GtkTreeViewColumn" id="colFFTcheck">
+                                    <child>
+                                      <object class="GtkCellRendererToggle" id="crFFTcheck"/>
+                                      <attributes>
+                                        <attribute name="active">0</attribute>
+                                      </attributes>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkTreeViewColumn" id="colFFTtext">
+                                    <property name="title" translatable="yes">File type</property>
+                                    <child>
+                                      <object class="GtkCellRendererText" id="crFFTtext"/>
+                                      <attributes>
+                                        <attribute name="text">1</attribute>
+                                      </attributes>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkCheckButton" id="chkFilterFileTypes">
+                            <property name="label" translatable="yes">File _types:</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkFrame" id="frFilterLossless">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkBox" id="boxLLbuttons">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="border-width">4</property>
+                            <property name="spacing">4</property>
+                            <property name="homogeneous">True</property>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnLLLossless">
+                                <property name="label" translatable="yes">lossless</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnLLLossy">
+                                <property name="label" translatable="yes">lossy</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                                <property name="group">rbtnLLLossless</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkCheckButton" id="chkFilterLossless">
+                            <property name="label" translatable="yes">_Lossless &amp; lossy formats:</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkFrame" id="frFilterHiRes">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <object class="GtkBox" id="boxHRbuttons">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="border-width">4</property>
+                            <property name="spacing">4</property>
+                            <property name="homogeneous">True</property>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnLRHiRes">
+                                <property name="label" translatable="yes">Hi-Res</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnLRLowRess">
+                                <property name="label" translatable="yes">Low-Res</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                                <property name="group">rbtnLRHiRes</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                            <style>
+                              <class name="linked"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkCheckButton" id="chkFilterHiRes">
+                            <property name="label" translatable="yes">_Resolution:</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkFrame" id="frFilterBitrat">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <!-- n-columns=2 n-rows=2 -->
+                          <object class="GtkGrid">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="border-width">4</property>
+                            <property name="row-spacing">4</property>
+                            <property name="column-spacing">4</property>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnBRLowerThan">
+                                <property name="label" translatable="yes">lower than</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="entFilterBitrateLower">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="activates-default">True</property>
+                                <property name="max-width-chars">8</property>
+                                <property name="input-purpose">digits</property>
+                                <property name="adjustment">adjEntFilterBitrateLower</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkRadioButton" id="rbtnBRGreaterThan">
+                                <property name="label" translatable="yes">greater than</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="active">True</property>
+                                <property name="draw-indicator">True</property>
+                                <property name="group">rbtnBRLowerThan</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="entFilterBitrateGreater">
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="activates-default">True</property>
+                                <property name="max-width-chars">8</property>
+                                <property name="text" translatable="yes">192</property>
+                                <property name="input-purpose">digits</property>
+                                <property name="adjustment">adjEntFilterBitrateGreater</property>
+                                <property name="value">192</property>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkCheckButton" id="chkFilterBitrate">
+                            <property name="label" translatable="yes">_Bit rate (kbps):</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                </child>
+                <child type="label">
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Типы файлов:</property>
-                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Filter by:</property>
                   </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkEntry" id="entFileTypes">
-                    <property name="visible">True</property>
-                    <property name="can-focus">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
                 </child>
               </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="position">2</property>
+                <property name="position">1</property>
               </packing>
             </child>
           </object>

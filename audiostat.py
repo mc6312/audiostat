@@ -21,9 +21,7 @@
     along with AudioStat.  If not, see <http://www.gnu.org/licenses/>."""
 
 
-TITLE = 'AudioStat'
-VERSION = '1.1'
-TITLE_VERSION = '%s v%s' % (TITLE, VERSION)
+from ascommon import *
 
 
 import sys
@@ -34,8 +32,25 @@ from collections import namedtuple
 from traceback import print_exception
 
 
-AUDIO_FILE_TYPES = {'.wav', '.mp3', '.flac', '.ape', '.mpa', '.ogg',
-    '.wv', '.ac3', '.aac', '.mka', '.dts', '.webm'}
+AUDIO_FILE_TYPES = (
+    ('FLAC',            {'.flac'}),
+    ('WavPack',         {'.wv'}),
+    ('Monkey’s Audio',  {'.ape'}),
+    ('MPEG Layer 3',    {'.mp3'}),
+    ('MPEG4 Audio',     {'.m4a'}),
+    ('OGG Vorbis',      {'.ogg', '.oga'}),
+    ('OGG Opus',        {'.opus'}),
+    ('OptimFROG',       {'.ofr'}),
+    ('AIFF',            {'.aif', '.aiff', '.aifc'}),
+    ('Wave',            {'.wav'}),
+    )
+
+
+DEFAULT_AUDIO_FILE_EXTS = set()
+
+for __, __exts in AUDIO_FILE_TYPES:
+    DEFAULT_AUDIO_FILE_EXTS.update(__exts)
+
 
 #TODO пополнить LOSSLESS_MIMETYPES при необходимости
 LOSSLESS_MIMETYPES = {'audio/flac', 'audio/x-ape', 'audio/x-wavpack'}
@@ -51,66 +66,128 @@ TAGS = (('title', ('TITLE', 'TIT2')),
         )
 
 
-def disp_int_val_k(i):
-    return '?' if not i else '%.1f' % (i / 1000.0)
+class AudioFileFilter(Representable):
+    """Параметры фильтрации аудиофайлов.
 
+    Поля:
+        byFileTypes:
+            булевское, True - фильтровать по типам (расширениям) файлов;
+        fileTypes:
+            множество строк - типов (расширений) файлов;
+            по умолчанию - DEFAULT_AUDIO_FILE_EXTS;
 
-def disp_int_val(i):
-    return '?' if not i else str(i)
+        byLossless:
+            булевское, True - фильтровать по формату сжатия (без потерь/
+            с потерями);
+        onlyLossless:
+            булевское, True - учитывать только аудио, сжатое без потерь;
 
+        byHiRes:
+            булевское, True - фильтровать по разрешению;
+        onlyHiRes:
+            булевское, True - учитывать только аудио высокого разрешения;
 
-def disp_int_range(a, b):
-    if a == b:
-        return disp_int_val(a)
-    else:
-        return '%s…%s' % (disp_int_val(a), disp_int_val(b))
+        byBitrate:
+            булевское, True - фильтровать по битрейту;
+        bitrateLowerThan:
+            булевское, True - учитывать аудио с битрейтом ниже указанного
+            значения;
+        bitrateLowerThanValue:
+            целое, максимальное значение битрейта (используется, если
+            BitrateLowerThan==True);
+        bitrateGreaterThanValue:
+            целое, минимальное значение битрейта (используется, если
+            BitrateLowerThan==False)."""
 
+    def __init__(self):
+        self.byFileTypes = False
+        self.fileTypes = DEFAULT_AUDIO_FILE_EXTS
 
-def disp_int_range_k(a, b):
-    if a == b:
-        return disp_int_val_k(a)
-    else:
-        return '%s - %s' % (disp_int_val_k(a), disp_int_val_k(b))
+        self.byLossless = False
+        self.onlyLossless = True
 
+        self.byHiRes = False
+        self.onlyHiRes = True
 
-def disp_bool(b, vtrue):
-    return None if not b else vtrue
+        self.byBitrate = False
+        self.bitrateLowerThan = True
+        self.bitrateLowerThanValue = 192
+        self.bitrateGreaterThanValue = 192
 
+    def has_data_filters(self):
+        return self.byLossless or self.byHiRes or self.byBitrate
 
-class __ReprBase():
-    """Класс-костыль для упрощения написания метода __repr__()
-    в классах с наследованием.
-    repr(obj) для экземпляра такого класса возвращает
-    "прилизанную" строку, содержащую отображения только нужных,
-    т.е. явно указанных в методе __repr_fields__() полей."""
+    def filetypes_from_str(self, fts):
+        self.fileTypes = set(map(lambda s: s.lower(), fts.split(None)))
 
-    def __repr_fields__(self):
-        """Костыль для наследования __repr__.
-        Должен возвращать список, содержащий кортежи из двух
-        элементов - названия поля и значения, при необходимости
-        преобразованного в строку в виде, пригодном для __repr__;
-        цельночисленные, булевские и т.п. значения следует
-        возвращать "как есть"."""
+    def filetypes_to_str(self):
+        return ' '.join(sorted(self.fileTypes))
 
-        return []
+    def get_audio_file_info(self, fpath):
+        """Проверка типа файла и извлечение параметров потока
+        и метаданных из аудиофайла.
 
-    def __repr__(self):
-        """Метод, """
-        def __rfld(name, value):
-            if isinstance(value, str):
-                s = '"%s"' % value
-            elif isinstance(value, int) or isinstance(value, float) or isinstance(value, bool):
-                s = str(value)
+        Параметры:
+            fpath   - строка, полный путь к файлу;
+            fexts   - множество строк - расширений (типов) файлов.
+
+        Возвращает экземпляр AudioFileInfo, если файл - поддерживаемого
+        типа, иначе возвращает None."""
+
+        def __get_info_fld(info, name, fallback):
+            if name in info.__dict__:
+                return getattr(info, name)
             else:
-                s = repr(value)
+                return fallback
 
-            return '%s=%s' % (name, s)
+        nfo = AudioFileInfo()
+        if not os.path.splitext(fpath)[-1].lower() in self.fileTypes:
+            return nfo
 
-        return '%s(%s)' % (self.__class__.__name__,
-            ', '.join(map(lambda f: __rfld(*f), self.__repr_fields__())))
+        nfo.isAudio = True
+
+        def __has_tags(fnfo, tnames):
+            for n in tnames:
+                if n in fnfo:
+                    return True
+
+            return False
+
+        try:
+            f = mutagen.File(fpath)
+
+            if not f:
+                return nfo
+
+            nfo.mime = str(f.mime[0])
+
+            nfo.lossy = nfo.mime not in LOSSLESS_MIMETYPES
+
+            tags = getattr(f, 'tags', None)
+            if tags:
+                nfo.missingTags = 0
+
+                for ix, (_, tnames) in enumerate(TAGS):
+                    if not __has_tags(f, tnames):
+                        nfo.missingTags = nfo.missingTags or (1 << ix)
+
+            nfo.sampleRate = __get_info_fld(f.info, 'sample_rate', 0)
+            nfo.channels = __get_info_fld(f.info, 'channels', 1)
+            nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
+            nfo.bitRate = __get_info_fld(f.info, 'bitrate', 0)
+
+            # пока проверка "на хайрез" минимальная
+            nfo.lowRes = (nfo.bitsPerSample < 24) and (nfo.sampleRate < 88200)
+
+        except Exception as ex:
+            print_exception(*sys.exc_info())
+            nfo.error = repr(ex)
+
+        return nfo
 
 
-class AudioStreamInfo(__ReprBase):
+
+class AudioStreamInfo(Representable):
     """Информация об аудиопотоке:
     lossy           - булевское; True, если использовано сжатие с потерями;
     lowRes          - булевское; True, если поток не тянет по параметрам
@@ -173,7 +250,7 @@ class AudioFileInfo(AudioStreamInfo):
             ('mime', self.mime)]
 
 
-class AudioDirectoryInfo(__ReprBase):
+class AudioDirectoryInfo(Representable):
     """Класс для сбора статистики по каталогу с аудиофайлами.
 
     minInfo, maxInfo - экземпляры AudioStreamInfo,
@@ -263,62 +340,6 @@ class AudioDirectoryInfo(__ReprBase):
         self.minInfo.lossy |= nfo.lossy
         self.minInfo.lowRes |= nfo.lowRes
         self.minInfo.missingTags |= nfo.missingTags
-
-
-def get_audio_file_info(fpath, ftypes=AUDIO_FILE_TYPES):
-    """Извлечение параметров потока и метаданных из аудиофайла.
-    Возвращает экземпляр AudioFileInfo."""
-
-    def __get_info_fld(info, name, fallback):
-        if name in info.__dict__:
-            return getattr(info, name)
-        else:
-            return fallback
-
-    nfo = AudioFileInfo()
-    if not os.path.splitext(fpath)[-1].lower() in ftypes:
-        return nfo
-
-    nfo.isAudio = True
-
-    def __has_tags(fnfo, tnames):
-        for n in tnames:
-            if n in fnfo:
-                return True
-
-        return False
-
-    try:
-        f = mutagen.File(fpath)
-
-        if not f:
-            return nfo
-
-        nfo.mime = str(f.mime[0])
-
-        nfo.lossy = nfo.mime not in LOSSLESS_MIMETYPES
-
-        tags = getattr(f, 'tags', None)
-        if tags:
-            nfo.missingTags = 0
-
-            for ix, (_, tnames) in enumerate(TAGS):
-                if not __has_tags(f, tnames):
-                    nfo.missingTags = nfo.missingTags or (1 << ix)
-
-        nfo.sampleRate = __get_info_fld(f.info, 'sample_rate', 0)
-        nfo.channels = __get_info_fld(f.info, 'channels', 1)
-        nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
-        nfo.bitRate = __get_info_fld(f.info, 'bitrate', 0)
-
-        # пока проверка "на хайрез" минимальная
-        nfo.lowRes = (nfo.bitsPerSample < 24) and (nfo.sampleRate < 88200)
-
-    except Exception as ex:
-        print_exception(*sys.exc_info())
-        nfo.error = repr(ex)
-
-    return nfo
 
 
 def __test_scan_directory(path):

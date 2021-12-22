@@ -26,25 +26,53 @@ import sys
 import os.path
 from configparser import ConfigParser
 
-from audiostat import AUDIO_FILE_TYPES
+from audiostat import AudioFileFilter, DEFAULT_AUDIO_FILE_EXTS
+from ascommon import *
 
 
-def str_to_filetypes(fts):
-    return set(map(lambda s: s.lower(), fts.split(None)))
+class Config(Representable):
+    """Настройки AudioStat.
 
+    Поля:
+        lastDirectory:
+            строка, путь к последнему просканированному каталогу;
 
-def filetypes_to_str(fts):
-    return ' '.join(sorted(fts))
+        filterParams:
+            экземпляр класса FilterParams."""
 
-
-class Config():
     __S_SETTINGS = 'settings'
     __V_LASTDIR = 'last-directory'
-    __V_FILETYPES = 'file-types'
+
+    __S_FILTERS = 'filters'
+    __V_FILTER_BY_FILETYPES = 'filter-by-filetypes'
+    __V_FILTER_FILETYPES = 'file-types'
+    __V_FILTER_BY_LOSSLESS = 'filter-by-lossless'
+    __V_FILTER_ONLY_LOSSLESS = 'filter-only-lossless'
+    __V_FILTER_BY_HIRES = 'filter-by-hi-res'
+    __V_FILTER_ONLY_HIRES = 'filter-only-hires'
+    __V_FILTER_BY_BITRATE = 'filter-by-bitrate'
+    __V_FILTER_BITRATE_LOWER = 'filter-bitrate-lower-than'
+    __V_FILTER_BITRATE_LOWER_VALUE = 'filter-bitrate-lower-value'
+    __V_FILTER_BITRATE_GREATER_VALUE = 'filter-bitrate-greater-value'
 
     def __init__(self):
+        #
+        # ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ
+        #
+
+        #
+        # основные настройки
+        #
         self.lastDirectory = os.path.expanduser('~')
-        self.fileTypes = AUDIO_FILE_TYPES
+
+        #
+        # параметры фильтрации
+        #
+        self.filter = AudioFileFilter()
+
+        #
+        # подготовка к загрузке
+        #
 
         #
         if sys.platform == 'linux':
@@ -66,25 +94,71 @@ class Config():
         cfg.read(self.pathConfig)
 
         #
+        # тащим значения из конфига в поля сего объекта
+        #
         self.lastDirectory = os.path.expanduser(cfg.get(self.__S_SETTINGS,
             self.__V_LASTDIR, fallback=self.lastDirectory))
 
-        self.fileTypes = str_to_filetypes(cfg.get(self.__S_SETTINGS,
-            self.__V_FILETYPES, fallback=filetypes_to_str(self.fileTypes)))
+        #
+        self.filter.byFileTypes = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_FILETYPES, fallback=self.filter.byFileTypes)
+        self.filter.filetypes_from_str(cfg.get(self.__S_FILTERS,
+            self.__V_FILTER_FILETYPES, fallback=self.filter.filetypes_to_str()))
+
+        #
+        self.filter.byLossless = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_LOSSLESS, fallback=self.filter.byLossless)
+        self.filter.onlyLossless = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_ONLY_LOSSLESS, fallback=self.filter.onlyLossless)
+
+        #
+        self.filter.byHiRes = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_HIRES, fallback=self.filter.byHiRes)
+        self.filter.onlyHiRes = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_ONLY_HIRES, fallback=self.filter.onlyHiRes)
+
+        #
+        self.filter.byBitrate = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_BITRATE, fallback=self.filter.byBitrate)
+        self.filter.bitrateLowerThan = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BITRATE_LOWER, fallback=self.filter.bitrateLowerThan)
+        self.filter.bitrateLowerThanValue = cfg.getint(self.__S_FILTERS,
+            self.__V_FILTER_BITRATE_LOWER_VALUE, fallback=self.filter.bitrateLowerThanValue)
+        self.filter.bitrateGreaterThanValue = cfg.getint(self.__S_FILTERS,
+            self.__V_FILTER_BITRATE_GREATER_VALUE, fallback=self.filter.bitrateGreaterThanValue)
 
     def save(self):
         cfg = ConfigParser()
         cfg.add_section(self.__S_SETTINGS)
+        cfg.add_section(self.__S_FILTERS)
 
+        #
         cfg.set(self.__S_SETTINGS, self.__V_LASTDIR, self.lastDirectory)
-        cfg.set(self.__S_SETTINGS, self.__V_FILETYPES, filetypes_to_str(self.fileTypes))
 
+        #
+        self.filter.byFileTypes = False
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_FILETYPES, self.filter.filetypes_to_str())
+
+        #
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_LOSSLESS, str(self.filter.byLossless))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_LOSSLESS, str(self.filter.onlyLossless))
+
+        #
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_HIRES, str(self.filter.byHiRes))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_HIRES, str(self.filter.onlyHiRes))
+
+        #
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_BITRATE, str(self.filter.byBitrate))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER, str(self.filter.bitrateLowerThan))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER_VALUE, str(self.filter.bitrateLowerThanValue))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_GREATER_VALUE, str(self.filter.bitrateGreaterThanValue))
+
+        #
         with open(self.pathConfig, 'w+') as f:
             cfg.write(f)
 
-    def __repr__(self):
-        return '%s(pathConfig="%s", lastDirectory="%s", fileTypes=%s)' % (self.__class__.__name__,
-            self.pathConfig, self.lastDirectory, self.fileTypes)
+    def __repr_fields__(self):
+        return []
 
 
 if __name__ == '__main__':

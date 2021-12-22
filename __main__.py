@@ -22,22 +22,17 @@
 import sys
 from traceback import print_exception
 
-try:
-    from gtktools import *
-    from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
-    #from gi.repository.GdkPixbuf import Pixbuf
+from gtktools import *
+from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
+#from gi.repository.GdkPixbuf import Pixbuf
 
-    import mutagen
-except ImportError as ex:
-    print('** %s' % repr(ex))
-
-    msg_dialog(None, 'Import error', repr(ex))
-    sys.exit(255)
+import mutagen
 
 from warnings import warn
 
 from collections import OrderedDict
 
+from ascommon import *
 from audiostat import *
 from asconfig import *
 
@@ -83,18 +78,41 @@ class MainWnd():
 
         self.clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
+        #
         # start page
-        self.fcStartDir, self.entFileTypes = get_ui_widgets(uibldr,
-            'fcStartDir', 'entFileTypes')
+        #
+        self.fcStartDir = uibldr.get_object('fcStartDir')
 
+        # фильтрация по типам файлов
+        self.chkFilterFileTypes, self.swFilterFileTypes = get_ui_widgets(uibldr,
+            'swFilterFileTypes', 'chkFilterFileTypes')
+        self.tvFilterFileTypes = TreeViewShell.new_from_uibuilder(uibldr, 'tvFilterFileTypes')
+
+        #TODO дописать заполнение tvFilterFileTypes
+
+        # фильтрация по формату - без потерь/с потерями
+        self.chkFilterLossless, self.rbtnLLLossless = get_ui_widgets(uibldr,
+            'chkFilterLossless', 'rbtnLLLossless')
+
+        # фильтрация по разрешению
+        self.chkFilterHiRes, self.rbtnLRHiRes = get_ui_widgets(uibldr,
+            'chkFilterHiRes', 'rbtnLRHiRes')
+
+        # фильтрация по битрейту
+        #TODO доделать: фильтрация по битрейту
+
+        #
         # progress page
+        #
         self.labProgressPath, self.labProgressFiles,\
         self.labProgressAudioFiles, self.labProgressErrors,\
         self.progressBar = get_ui_widgets(uibldr,
             'labProgressPath', 'labProgressFiles', 'labProgressAudioFiles',
             'labProgressErrors', 'progressBar')
 
+        #
         # stats page
+        #
         swStats = uibldr.get_object('swStats')
         _ = WIDGET_BASE_HEIGHT * 32
         swStats.set_min_content_height(_)
@@ -108,7 +126,7 @@ class MainWnd():
         self.tvBitsPerSample = TreeViewShell.new_from_uibuilder(uibldr, 'tvBitsPerSample')
 
         #
-        self.entFileTypes.set_text(filetypes_to_str(self.cfg.fileTypes))
+        #self.entFileTypes.set_text(filetypes_to_str(self.cfg.fileTypes))
 
         #
         self.stopScanning = False
@@ -142,7 +160,10 @@ class MainWnd():
         totalSummary[TS_MISTAGS] = 0
 
         #
-        self.cfg.fileTypes = str_to_filetypes(self.entFileTypes.get_text())
+        self.cfg.fileTypes = DEFAULT_AUDIO_FILE_EXTS
+        #TODO допилить выбор типов файлов
+        warn('file type selection must be implemented!')
+        #str_to_filetypes(self.entFileTypes.get_text())
 
         def __scan_directory(destNode, fdir):
             """Обход подкаталога.
