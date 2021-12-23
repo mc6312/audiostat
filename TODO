@@ -1,14 +1,12 @@
 __main__.py
-  MainWnd.__init__()
-     91: дописать заполнение tvFilterFileTypes
-    102: доделать: фильтрация по битрейту
-
   MainWnd.scan_statistics()
-    164: допилить выбор типов файлов
+    311: допилить выбор типов файлов
 
   MainWnd.scan_statistics()/__scan_directory()/__next_error()
-    188: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
+    335: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
 
 audiostat.py
-    55: пополнить LOSSLESS_MIMETYPES при необходимости
+     61: пополнить LOSSLESS_MIMETYPES при необходимости
+  AudioFileFilter.get_audio_file_info()
+    232: прикрутить фильтрацию для файлов с ошибками чтения и/или метаданных
 

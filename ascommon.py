@@ -52,6 +52,15 @@ def disp_bool(b, vtrue):
     return None if not b else vtrue
 
 
+def floor_ceil_int(v, vmin, vmax):
+    if v < vmin:
+        return vmin
+    elif v > vmax:
+        return vmax
+    else:
+        return v
+
+
 class Representable():
     """Класс-костыль для упрощения написания метода __repr__()
     в классах с наследованием, для облегчения отладки классов.

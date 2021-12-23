@@ -26,6 +26,7 @@ from gtktools import *
 from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
 #from gi.repository.GdkPixbuf import Pixbuf
 
+
 import mutagen
 
 from warnings import warn
@@ -43,6 +44,9 @@ class MainWnd():
     # столбцы TreeModel дерева статистики
     STC_NAME, STC_SAMPLERATE, STC_CHANNELS, STC_BITSPERSAMPLE,\
     STC_BITRATE, STC_LOSSY, STC_MISSINGTAGS, STC_LOWRES = range(8)
+
+    # столбцы TreeModel списка типов файлов
+    FTC_CHECKED, FTC_NAME = range(2)
 
     def wnd_destroy(self, widget, data=None):
         #!!!
@@ -72,6 +76,10 @@ class MainWnd():
 
         self.markIcon = load_system_icon('object-select-symbolic', Gtk.IconSize.MENU, False, symbolic=True)
 
+        # индекс в кортеже - AudioStreamInfo.RESOLUTION_*
+        self.resolutionIcons = tuple(map(lambda s: load_system_icon(s, Gtk.IconSize.MENU, symbolic=True),
+            ('non-starred', 'semi-starred', 'starred')))
+
         #
         self.pages, self.btnRun, self.boxFileCtls, self.btnCopyPath = get_ui_widgets(uibldr,
             'pages', 'btnRun', 'boxFileCtls', 'btnCopyPath')
@@ -82,24 +90,84 @@ class MainWnd():
         # start page
         #
         self.fcStartDir = uibldr.get_object('fcStartDir')
+        # потому как текущая версия Glade (3.38.x) - косяк на косяке
+        self.fcStartDir.set_action(Gtk.FileChooserAction.SELECT_FOLDER)
 
+        #
         # фильтрация по типам файлов
         self.chkFilterFileTypes, self.swFilterFileTypes = get_ui_widgets(uibldr,
-            'swFilterFileTypes', 'chkFilterFileTypes')
+            'chkFilterFileTypes', 'swFilterFileTypes')
         self.tvFilterFileTypes = TreeViewShell.new_from_uibuilder(uibldr, 'tvFilterFileTypes')
 
-        #TODO дописать заполнение tvFilterFileTypes
+        self.chkFilterFileTypes.set_active(self.cfg.filter.byFileTypes)
 
+        self.swFilterFileTypes.set_min_content_height(WIDGET_BASE_HEIGHT * 10)
+        self.swFilterFileTypes.set_sensitive(self.cfg.filter.byFileTypes)
+
+        for ftname, ftexts in AUDIO_FILE_TYPES:
+            self.tvFilterFileTypes.store.append((ftexts & self.cfg.filter.fileTypes,
+                ftname))
+
+        #
         # фильтрация по формату - без потерь/с потерями
-        self.chkFilterLossless, self.rbtnLLLossless = get_ui_widgets(uibldr,
-            'chkFilterLossless', 'rbtnLLLossless')
+        self.boxFilterByFormat,\
+        self.chkFilterByLossless, self.rbtnFilterFmtLossless = get_ui_widgets(uibldr,
+            'boxFilterByFormat', 'chkFilterByLossless', 'rbtnFilterFmtLossless')
 
+        # здесь и далее - названия виджетов соответствуют полям AudioFileFilter,
+        # и их состояние прямо здесь устанавливается из содержимого конфига
+        self.chkFilterByLossless.set_active(self.cfg.filter.byLossless)
+        self.boxFilterByFormat.set_sensitive(self.cfg.filter.byLossless)
+
+        self.rbtnFilterFmtLossless.set_active(self.cfg.filter.onlyLossless)
+
+        #
         # фильтрация по разрешению
-        self.chkFilterHiRes, self.rbtnLRHiRes = get_ui_widgets(uibldr,
-            'chkFilterHiRes', 'rbtnLRHiRes')
+        self.boxFilterByResolution, self.chkFilterByResolution,\
+        self.rbtnFilterByResolutionLow, self.rbtnFilterByResolutionStd,\
+        self.rbtnFilterByResolutionHigh = get_ui_widgets(uibldr,
+            'boxFilterByResolution', 'chkFilterByResolution',
+            'rbtnFilterByResolutionLow', 'rbtnFilterByResolutionStd', 'rbtnFilterByResolutionHigh')
 
+        self.chkFilterByResolution.set_active(self.cfg.filter.byResolution)
+        self.boxFilterByResolution.set_sensitive(self.cfg.filter.byResolution)
+
+        if self.cfg.filter.resolution == AudioStreamInfo.RESOLUTION_LOW:
+            rb = self.rbtnFilterByResolutionLow
+        elif self.cfg.filter.resolution == AudioStreamInfo.RESOLUTION_STANDARD:
+            rb = self.rbtnFilterByResolutionStd
+        else:
+            rb = self.rbtnFilterByResolutionHigh
+
+        rb.set_active(True)
+
+        #
         # фильтрация по битрейту
-        #TODO доделать: фильтрация по битрейту
+        self.chkFilterByBitrate, self.gridFilterByBitrate,\
+        self.rbtnFilterBRLowerThan, self.rbtnFilterBRGreaterThan,\
+        self.entFilterBitrateMax, self.entFilterBitrateMin,\
+        adjEntFilterBitrateGreater, adjEntFilterBitrateLower = get_ui_widgets(uibldr,
+            'chkFilterByBitrate', 'gridFilterByBitrate',
+            'rbtnFilterBRLowerThan', 'rbtnFilterBRGreaterThan',
+            'entFilterBitrateMax', 'entFilterBitrateMin',
+            'adjEntFilterBitrateGreater', 'adjEntFilterBitrateLower')
+
+        for adj in (adjEntFilterBitrateGreater, adjEntFilterBitrateLower):
+            adj.set_upper(AudioStreamInfo.BITRATE_MAX)
+            adj.set_lower(AudioStreamInfo.BITRATE_MIN)
+
+        self.chkFilterByBitrate.set_active(self.cfg.filter.byBitrate)
+        self.gridFilterByBitrate.set_sensitive(self.cfg.filter.byBitrate)
+
+        if self.cfg.filter.bitrateLowerThan:
+            rb = self.rbtnFilterBRLowerThan
+        else:
+            rb = self.rbtnFilterBRGreaterThan
+
+        self.entFilterBitrateMax.set_value(self.cfg.filter.bitrateLowerThanValue)
+        self.entFilterBitrateMin.set_value(self.cfg.filter.bitrateGreaterThanValue)
+
+        rb.set_active(True)
 
         #
         # progress page
@@ -136,6 +204,77 @@ class MainWnd():
 
         uibldr.connect_signals(self)
 
+    def chkFilterFileTypes_toggled(self, cb):
+        self.cfg.filter.byFileTypes = cb.get_active()
+        self.swFilterFileTypes.set_sensitive(self.cfg.filter.byFileTypes)
+
+    def chkFilterByLossless_toggled(self, cb):
+        self.cfg.filter.byLossless = cb.get_active()
+        self.boxFilterByFormat.set_sensitive(self.cfg.filter.byLossless)
+
+    def rbtnFilterFmtLossless_toggled(self, rb):
+        self.cfg.filter.onlyLossless = rb.get_active()
+
+    def rbtnFilterFmtLossy_toggled(self, rb):
+        self.cfg.filter.onlyLossless = not rb.get_active()
+
+    def chkFilterByResolution_toggled(self, cb):
+        self.cfg.filter.byResolution = cb.get_active()
+        self.boxFilterByResolution.set_sensitive(self.cfg.filter.byResolution)
+
+    def rbtnFilterByResolutionLow_toggled(self, rb):
+        if rb.get_active():
+            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_LOW
+
+    def rbtnFilterByResolutionStd_toggled(self, rb):
+        if rb.get_active():
+            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_STANDARD
+
+    def rbtnFilterByResolutionHigh_toggled(self, rb):
+        if rb.get_active():
+            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_HIGH
+
+    def chkFilterByBitrate_toggled(self, cb):
+        self.cfg.filter.byBitrate = cb.get_active()
+        self.gridFilterByBitrate.set_sensitive(self.cfg.filter.byBitrate)
+
+    def rbtnFilterBRLowerThan_toggled(self, rb):
+        self.cfg.filter.bitrateLowerThan = rb.get_active()
+
+    def rbtnFilterBRGreaterThan_toggled(self, rb):
+        self.cfg.filter.bitrateLowerThan = not rb.get_active()
+
+    def entFilterBitrateMax_value_changed(self, sb):
+        self.cfg.filter.bitrateLowerThanValue = sb.get_value_as_int()
+
+    def entFilterBitrateMin_value_changed(self, sb):
+        self.cfg.filter.bitrateGreaterThanValue = sb.get_value_as_int()
+
+    def __toggle_filetype(self, path):
+        itr = self.tvFilterFileTypes.store.get_iter(path)
+        ix = path.get_indices()[0]
+
+        v = not self.tvFilterFileTypes.store.get_value(itr, self.FTC_CHECKED)
+        self.tvFilterFileTypes.store.set_value(itr, self.FTC_CHECKED, v)
+
+        if v:
+            self.cfg.filter.fileTypes |= AUDIO_FILE_TYPES[ix].exts
+        else:
+            self.cfg.filter.fileTypes -= AUDIO_FILE_TYPES[ix].exts
+
+    def crFFTcheck_toggled(self, crt, path):
+        """Переключение чекбокса в списке типов файлов"""
+
+        # path приезжает как строка!
+        self.__toggle_filetype(Gtk.TreePath.new_from_string(path))
+
+    def tvFilterFileTypes_row_activated(self, tv, path, col):
+        """Двойной клик по строке в списке типов файлов"""
+
+        # path приезжает как Gtk.TreePath
+        # (см. метод выше - ай спасибо гномеры за "единообразие!")
+        self.__toggle_filetype(path)
+
     def scan_statistics(self):
         self.stopScanning = False
 
@@ -151,12 +290,20 @@ class MainWnd():
 
         # прочая статистика
         TS_LOSSY = 'Lossy'
-        TS_LOWRES = 'Low res.'
+
+        TS_BY_RES = ('Low res.',    # AudioStreamInfo.RESOLUTION_LOW
+                     'Std. res.',   # AudioStreamInfo.RESOLUTION_STANDARD
+                     'High res.',   # AudioStreamInfo.RESOLUTION_HIGH
+                     )
+
         TS_MISTAGS = 'Missing tags'
 
         totalSummary = OrderedDict()
+
+        for nres in TS_BY_RES:
+            totalSummary[nres] = 0
+
         totalSummary[TS_LOSSY] = 0
-        totalSummary[TS_LOWRES] = 0
         totalSummary[TS_MISTAGS] = 0
 
         #
@@ -218,59 +365,63 @@ class MainWnd():
                              disp_int_range_k(subinfo.minInfo.bitRate, subinfo.maxInfo.bitRate),
                              disp_bool(subinfo.minInfo.lossy, self.markIcon),
                              disp_bool(subinfo.minInfo.missingTags, self.markIcon),
-                             disp_bool(subinfo.minInfo.lowRes, self.markIcon)))
+                             self.resolutionIcons[subinfo.minInfo.resolution],
+                             ))
 
                 else:
                     self.progressFiles += 1
                     self.labProgressFiles.set_text(str(self.progressFiles))
 
-                    r = get_audio_file_info(fpath, self.cfg.fileTypes)
+                    nfo = self.cfg.filter.get_audio_file_info(fpath)
 
-                    if r.error:
-                        'error reading file "%s" - %s' % (fname, r.error)
-                    elif r.isAudio:
-                        dirinfo.update_from_file(r)
-
-                        # статистика по sampleRate
-                        if r.sampleRate in totalSampleRates:
-                            totalSampleRates[r.sampleRate] += 1
+                    if nfo:
+                        if nfo.error:
+                            __next_error('error reading file "%s" - %s' % (fname, nfo.error))
                         else:
-                            totalSampleRates[r.sampleRate] = 1
+                            dirinfo.update_from_file(nfo)
 
-                        # статистика по bitsPerSample
-                        if r.bitsPerSample in totalBitsPerSample:
-                            totalBitsPerSample[r.bitsPerSample] += 1
-                        else:
-                            totalBitsPerSample[r.bitsPerSample] = 1
+                            # статистика по sampleRate
+                            if nfo.sampleRate in totalSampleRates:
+                                totalSampleRates[nfo.sampleRate] += 1
+                            else:
+                                totalSampleRates[nfo.sampleRate] = 1
 
-                        # прочая статистика
-                        if r.lossy:
-                            totalSummary[TS_LOSSY] += 1
+                            # статистика по bitsPerSample
+                            if nfo.bitsPerSample in totalBitsPerSample:
+                                totalBitsPerSample[nfo.bitsPerSample] += 1
+                            else:
+                                totalBitsPerSample[nfo.bitsPerSample] = 1
 
-                        if r.lowRes:
-                            totalSummary[TS_LOWRES] += 1
+                            # прочая статистика
+                            if nfo.lossy:
+                                totalSummary[TS_LOSSY] += 1
 
-                        if r.missingTags:
-                            totalSummary[TS_MISTAGS] += 1
+                            for ixres, nres in enumerate(TS_BY_RES):
+                                if nfo.resolution == ixres:
+                                    totalSummary[nres] += 1
 
-                        #
-                        self.progressAudioFiles += 1
-                        self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
+                            if nfo.missingTags:
+                                totalSummary[TS_MISTAGS] += 1
 
-                        # захерачим файл в статистику
-                        # столбцы TreeStore:
-                        # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags, lowres
-                        self.tvStats.store.append(destNode,
-                            (fname,
-                             disp_int_val_k(r.sampleRate),
-                             disp_int_val(r.channels),
-                             disp_int_val(r.bitsPerSample),
-                             disp_int_val_k(r.bitRate),
-                             disp_bool(r.lossy, self.markIcon),
-                             disp_bool(r.missingTags, self.markIcon),
-                             disp_bool(r.lowRes, self.markIcon)))
+                            #
+                            self.progressAudioFiles += 1
+                            self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
 
-                    #error, lossy, mime, sampleRate, channels, bitsPerSample, missingTags
+                            # захерачим файл в статистику
+                            # столбцы TreeStore:
+                            # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags, lowres
+                            self.tvStats.store.append(destNode,
+                                (fname,
+                                 disp_int_val_k(nfo.sampleRate),
+                                 disp_int_val(nfo.channels),
+                                 disp_int_val(nfo.bitsPerSample),
+                                 disp_int_val_k(nfo.bitRate),
+                                 disp_bool(nfo.lossy, self.markIcon),
+                                 disp_bool(nfo.missingTags, self.markIcon),
+                                 self.resolutionIcons[nfo.resolution],
+                                 ))
+
+                        #error, lossy, mime, sampleRate, channels, bitsPerSample, missingTags
 
                     #
                     self.progressBar.pulse()
@@ -283,9 +434,7 @@ class MainWnd():
         #
         self.tvStats.refresh_begin()
 
-        print('*** Starting collecting statistics ***', file=sys.stderr)
-        self.cfg.lastDirectory = self.fcStartDir.get_current_folder()
-        print('Searching audio files in %s' % self.cfg.lastDirectory, file=sys.stderr)
+        print('*** Starting collecting statistics in %s' % self.cfg.lastDirectory, file=sys.stderr)
 
         dirinfo = __scan_directory(None, self.cfg.lastDirectory)
 
@@ -300,13 +449,17 @@ class MainWnd():
         # вроде как всё нормально - показываем статистику
         #
 
-        def fill_summary_table(srcd, tv, tostr):
+        def fill_summary_table(srcd, tv, tostr, _sort):
             __pcts = lambda n: int(float(n) / self.progressAudioFiles * 100.0)
             __s_pcts = lambda n, p: '%d (%d%%)' % (n, p)
 
             tv.refresh_begin()
 
-            for param, nfiles in sorted(srcd.items()):
+            dlst = srcd.items()
+            if _sort:
+                dlst = sorted(dlst)
+
+            for param, nfiles in dlst:
                 if param != 0:
                     pcts = __pcts(nfiles)
                     tv.store.append((tostr(param),
@@ -323,13 +476,13 @@ class MainWnd():
             tv.refresh_end()
 
         # заполняем таблицу sampleRates
-        fill_summary_table(totalSampleRates, self.tvSampleRates, disp_int_val_k)
+        fill_summary_table(totalSampleRates, self.tvSampleRates, disp_int_val_k, True)
 
         # заполняем таблицу bitsPerSample
-        fill_summary_table(totalBitsPerSample, self.tvBitsPerSample, disp_int_val)
+        fill_summary_table(totalBitsPerSample, self.tvBitsPerSample, disp_int_val, True)
 
         # заполняем прочую статистику
-        fill_summary_table(totalSummary, self.tvSummary, str)
+        fill_summary_table(totalSummary, self.tvSummary, str, False)
 
         #
         self.btnRun.set_label('Scan other directory')
@@ -370,6 +523,10 @@ class MainWnd():
 
         self.boxFileCtls.set_visible(False)
         self.boxFileCtls.set_sensitive(False)
+
+    def fcStartDir_current_folder_changed(self, fc):
+        self.cfg.lastDirectory = self.fcStartDir.get_current_folder()
+        print('Search directory changed to "%s"' % self.cfg.lastDirectory)
 
     def btnRun_clicked(self, btn):
         p = self.pages.get_current_page()

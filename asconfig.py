@@ -26,7 +26,7 @@ import sys
 import os.path
 from configparser import ConfigParser
 
-from audiostat import AudioFileFilter, DEFAULT_AUDIO_FILE_EXTS
+from audiostat import *
 from ascommon import *
 
 
@@ -44,12 +44,12 @@ class Config(Representable):
     __V_LASTDIR = 'last-directory'
 
     __S_FILTERS = 'filters'
-    __V_FILTER_BY_FILETYPES = 'filter-by-filetypes'
+    __V_FILTER_BY_FILETYPES = 'filter-by-file-types'
     __V_FILTER_FILETYPES = 'file-types'
     __V_FILTER_BY_LOSSLESS = 'filter-by-lossless'
     __V_FILTER_ONLY_LOSSLESS = 'filter-only-lossless'
-    __V_FILTER_BY_HIRES = 'filter-by-hi-res'
-    __V_FILTER_ONLY_HIRES = 'filter-only-hires'
+    __V_FILTER_BY_RESOLUTION = 'filter-by-hi-res'
+    __V_FILTER_RESOLUTION = 'filter-resolution'
     __V_FILTER_BY_BITRATE = 'filter-by-bitrate'
     __V_FILTER_BITRATE_LOWER = 'filter-bitrate-lower-than'
     __V_FILTER_BITRATE_LOWER_VALUE = 'filter-bitrate-lower-value'
@@ -112,20 +112,23 @@ class Config(Representable):
             self.__V_FILTER_ONLY_LOSSLESS, fallback=self.filter.onlyLossless)
 
         #
-        self.filter.byHiRes = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_HIRES, fallback=self.filter.byHiRes)
-        self.filter.onlyHiRes = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_ONLY_HIRES, fallback=self.filter.onlyHiRes)
+        self.filter.byResolution = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_RESOLUTION, fallback=self.filter.byResolution)
+        self.filter.resolution = floor_ceil_int(cfg.getint(self.__S_FILTERS,
+            self.__V_FILTER_RESOLUTION, fallback=self.filter.resolution),
+            AudioStreamInfo.RESOLUTION_MIN, AudioStreamInfo.RESOLUTION_MAX)
 
         #
         self.filter.byBitrate = cfg.getboolean(self.__S_FILTERS,
             self.__V_FILTER_BY_BITRATE, fallback=self.filter.byBitrate)
         self.filter.bitrateLowerThan = cfg.getboolean(self.__S_FILTERS,
             self.__V_FILTER_BITRATE_LOWER, fallback=self.filter.bitrateLowerThan)
-        self.filter.bitrateLowerThanValue = cfg.getint(self.__S_FILTERS,
-            self.__V_FILTER_BITRATE_LOWER_VALUE, fallback=self.filter.bitrateLowerThanValue)
-        self.filter.bitrateGreaterThanValue = cfg.getint(self.__S_FILTERS,
-            self.__V_FILTER_BITRATE_GREATER_VALUE, fallback=self.filter.bitrateGreaterThanValue)
+        self.filter.bitrateLowerThanValue = floor_ceil_int(cfg.getint(self.__S_FILTERS,
+            self.__V_FILTER_BITRATE_LOWER_VALUE, fallback=self.filter.bitrateLowerThanValue),
+            AudioStreamInfo.BITRATE_MIN, AudioStreamInfo.BITRATE_MAX)
+        self.filter.bitrateGreaterThanValue = floor_ceil_int(cfg.getint(self.__S_FILTERS,
+            self.__V_FILTER_BITRATE_GREATER_VALUE, fallback=self.filter.bitrateGreaterThanValue),
+            AudioStreamInfo.BITRATE_MIN, AudioStreamInfo.BITRATE_MAX)
 
     def save(self):
         cfg = ConfigParser()
@@ -136,7 +139,7 @@ class Config(Representable):
         cfg.set(self.__S_SETTINGS, self.__V_LASTDIR, self.lastDirectory)
 
         #
-        self.filter.byFileTypes = False
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_FILETYPES, str(self.filter.byFileTypes))
         cfg.set(self.__S_FILTERS, self.__V_FILTER_FILETYPES, self.filter.filetypes_to_str())
 
         #
@@ -144,8 +147,8 @@ class Config(Representable):
         cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_LOSSLESS, str(self.filter.onlyLossless))
 
         #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_HIRES, str(self.filter.byHiRes))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_HIRES, str(self.filter.onlyHiRes))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_RESOLUTION, str(self.filter.byResolution))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_RESOLUTION, str(self.filter.resolution))
 
         #
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_BITRATE, str(self.filter.byBitrate))
