@@ -46,6 +46,8 @@ class Config(Representable):
     __S_FILTERS = 'filters'
     __V_FILTER_BY_FILETYPES = 'filter-by-file-types'
     __V_FILTER_FILETYPES = 'file-types'
+    __V_FILTER_BY_CONTAINS_METADATA = 'filter-by-contains-metadata'
+    __V_FILTER_ONLY_CONTAINS_METADATA = 'contains-metadata'
     __V_FILTER_BY_LOSSLESS = 'filter-by-lossless'
     __V_FILTER_ONLY_LOSSLESS = 'filter-only-lossless'
     __V_FILTER_BY_RESOLUTION = 'filter-by-hi-res'
@@ -54,6 +56,8 @@ class Config(Representable):
     __V_FILTER_BITRATE_LOWER = 'filter-bitrate-lower-than'
     __V_FILTER_BITRATE_LOWER_VALUE = 'filter-bitrate-lower-value'
     __V_FILTER_BITRATE_GREATER_VALUE = 'filter-bitrate-greater-value'
+    __V_FILTER_BY_ERRORS = 'filter-by-errors'
+    __V_FILTER_WITH_ERRORS_ONLY = 'filter-with-errors-only'
 
     def __init__(self):
         #
@@ -96,6 +100,9 @@ class Config(Representable):
         #
         # тащим значения из конфига в поля сего объекта
         #
+
+        #TODO возможно, стоит перелопатить эту копипасту в более компактный вид с обходом списка и getattr/setattr
+
         self.lastDirectory = os.path.expanduser(cfg.get(self.__S_SETTINGS,
             self.__V_LASTDIR, fallback=self.lastDirectory))
 
@@ -104,6 +111,12 @@ class Config(Representable):
             self.__V_FILTER_BY_FILETYPES, fallback=self.filter.byFileTypes)
         self.filter.filetypes_from_str(cfg.get(self.__S_FILTERS,
             self.__V_FILTER_FILETYPES, fallback=self.filter.filetypes_to_str()))
+
+        #
+        self.filter.byContainsMetadata = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_CONTAINS_METADATA, fallback=self.filter.byContainsMetadata)
+        self.filter.onlyContainsMetadata = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_ONLY_CONTAINS_METADATA, fallback=self.filter.onlyContainsMetadata)
 
         #
         self.filter.byLossless = cfg.getboolean(self.__S_FILTERS,
@@ -130,6 +143,12 @@ class Config(Representable):
             self.__V_FILTER_BITRATE_GREATER_VALUE, fallback=self.filter.bitrateGreaterThanValue),
             AudioStreamInfo.BITRATE_MIN, AudioStreamInfo.BITRATE_MAX)
 
+        #
+        self.filter.byErrors = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_BY_ERRORS, fallback=self.filter.byErrors)
+        self.filter.withErrorsOnly = cfg.getboolean(self.__S_FILTERS,
+            self.__V_FILTER_WITH_ERRORS_ONLY, fallback=self.filter.withErrorsOnly)
+
     def save(self):
         cfg = ConfigParser()
         cfg.add_section(self.__S_SETTINGS)
@@ -141,6 +160,10 @@ class Config(Representable):
         #
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_FILETYPES, str(self.filter.byFileTypes))
         cfg.set(self.__S_FILTERS, self.__V_FILTER_FILETYPES, self.filter.filetypes_to_str())
+
+        #
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_CONTAINS_METADATA, str(self.filter.byContainsMetadata))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_CONTAINS_METADATA, str(self.filter.onlyContainsMetadata))
 
         #
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_LOSSLESS, str(self.filter.byLossless))
@@ -155,6 +178,10 @@ class Config(Representable):
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER, str(self.filter.bitrateLowerThan))
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER_VALUE, str(self.filter.bitrateLowerThanValue))
         cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_GREATER_VALUE, str(self.filter.bitrateGreaterThanValue))
+
+        #
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_ERRORS, str(self.filter.byErrors))
+        cfg.set(self.__S_FILTERS, self.__V_FILTER_WITH_ERRORS_ONLY, str(self.filter.withErrorsOnly))
 
         #
         with open(self.pathConfig, 'w+') as f:

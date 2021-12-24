@@ -86,6 +86,12 @@ class AudioFileFilter(Representable):
             множество строк - типов (расширений) файлов;
             по умолчанию - DEFAULT_AUDIO_FILE_EXTS;
 
+        byContainsMetadata:
+            булевское, True - фильтровать по наличию метаданных в файле;
+        onlyContainsMetadata:
+            булевское, True - учитывать только файлы, содержащие
+            метаданные;
+
         byLossless:
             булевское, True - фильтровать по формату сжатия (без потерь/
             с потерями);
@@ -107,11 +113,17 @@ class AudioFileFilter(Representable):
             BitrateLowerThan==True);
         bitrateGreaterThanValue:
             целое, минимальное значение битрейта (используется, если
-            BitrateLowerThan==False)."""
+            BitrateLowerThan==False);
+
+        withErrors:
+            булевское, True - учитывать файлы с ошибками в метаданных."""
 
     def __init__(self):
         self.byFileTypes = False
         self.fileTypes = DEFAULT_AUDIO_FILE_EXTS
+
+        self.byContainsMetadata = False
+        self.onlyContainsMetadata = False
 
         self.byLossless = False
         self.onlyLossless = True
@@ -124,11 +136,8 @@ class AudioFileFilter(Representable):
         self.bitrateLowerThanValue = DEFAULTT_MIN_BITRATE
         self.bitrateGreaterThanValue = DEFAULTT_MIN_BITRATE
 
-    def has_data_filters(self):
-        """Возвращает True, если заданы хоть какие-нибудь
-        параметры фильтрации."""
-
-        return self.byLossless or self.byResolution or self.byBitrate
+        self.byErrors = False
+        self.withErrorsOnly = False
 
     def filetypes_from_str(self, fts):
         self.fileTypes = set(map(lambda s: s.lower(), fts.split(None)))
@@ -154,7 +163,12 @@ class AudioFileFilter(Representable):
             else:
                 return fallback
 
-        if not os.path.splitext(fpath)[-1].lower() in self.fileTypes:
+        fext = os.path.splitext(fpath)[-1].lower()
+
+        # расширение проверяем в любом случае:
+        # если указано "проверять тип" - по выбранным типам
+        # иначе - по всем известным типам
+        if fext not in (self.fileTypes if self.byFileTypes else DEFAULT_AUDIO_FILE_EXTS):
             return
 
         nfo = AudioFileInfo()
@@ -174,14 +188,16 @@ class AudioFileFilter(Representable):
             # файлы, не прошедшие фильтрацию - отбрасываем
             #
 
-            if not f:
-                if self.has_data_filters():
-                    # метаданных в файле нет, но фильтр хочет метаданных
-                    # потому файл отбрасываем
-                    return
+            if self.byErrors and self.withErrorsOnly:
+                # файл без ошибок, а тут мы хотим одних лишь ошибок
+                return
 
-                # файл известного типа, но без метаданных
-                # честно возвращаем инфу с пустыми полями...
+            if not f:
+                if self.byContainsMetadata:
+                    if self.onlyContainsMetadata:
+                        return
+
+                # файл известного типа, но без метаданных поломатым не считается
                 return nfo
 
             #
@@ -189,13 +205,13 @@ class AudioFileFilter(Representable):
             nfo.lossy = nfo.mime not in LOSSLESS_MIMETYPES
 
             if self.byLossless:
-                if self.onlyLossless and nfo.lossy:
+                if self.onlyLossless == nfo.lossy:
                     return
 
             nfo.sampleRate = __get_info_fld(f.info, 'sample_rate', 0)
             nfo.channels = __get_info_fld(f.info, 'channels', 1)
             nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
-            nfo.bitRate = __get_info_fld(f.info, 'bitrate', 0)
+            nfo.bitRate = int(__get_info_fld(f.info, 'bitrate', 0) / 1024)
 
             #
             # пока проверка "на хайрез" приколочена гвоздями здесь
@@ -208,11 +224,12 @@ class AudioFileFilter(Representable):
                 nfo.resolution = AudioStreamInfo.RESOLUTION_STANDARD
 
             if self.byResolution:
-                if self.resolution and nfo.resolution:
+                if self.resolution != nfo.resolution:
                     return
 
             #
             if self.byBitrate:
+                print(f'{nfo.bitRate=}, {self.bitrateLowerThan=}, {self.bitrateLowerThanValue=}, {self.bitrateGreaterThanValue=}')
                 if self.bitrateLowerThan:
                     if nfo.bitRate > self.bitrateLowerThanValue:
                         return
@@ -229,15 +246,27 @@ class AudioFileFilter(Representable):
 
         except mutagen.MutagenError as ex:
             # с прочими исключениями - обязательно падаем!
-            #TODO прикрутить фильтрацию для файлов с ошибками чтения и/или метаданных
-            #print_exception(*sys.exc_info())
+
+            if not self.byErrors:
+                return
+
             nfo.error = str(ex)
 
         return nfo
 
 
+class BaseAudioInfo(Representable):
+    def get_info_strings(self):
+        """Возвращает список строк для форматирования
+        текста с информацией об объекте."""
 
-class AudioStreamInfo(Representable):
+        return []
+
+    def get_hint_str(self):
+        return '\n'.join(self.get_info_strings())
+
+
+class AudioStreamInfo(BaseAudioInfo):
     RESOLUTION_LOW, RESOLUTION_STANDARD, RESOLUTION_HIGH = range(3)
     RESOLUTION_MIN = RESOLUTION_LOW
     RESOLUTION_MAX = RESOLUTION_HIGH
@@ -247,14 +276,14 @@ class AudioStreamInfo(Representable):
 
     """Информация об аудиопотоке:
     lossy           - булевское; True, если использовано сжатие с потерями;
-    resolution      - RESOLUTION_*; "разрешение" потока по значениям
+    resolution      - None или RESOLUTION_*; "разрешение" потока по значениям
                       sampleRate и bitsPerSample;
                       параметры проверки см. в функции get_audio_file_info();
     sampleRate      - целое, частота сэмплирования,
     channels        - целое, кол-во каналов;
     bitsPerSample   - целое, разрядность; м.б. 0 (неизвестно) для MP3 и
                       подобных форматов;
-    bitRate         - целое, битрейт (для форматов, где он известен);
+    bitRate         - целое, битрейт в килобитах/сек. (для форматов, где он известен);
     missingTags     - целое, битовые флаги TAG_xxx; ненулевое значение
                       в случае отсутствия важных тэгов в метаданных файла."""
 
@@ -263,12 +292,34 @@ class AudioStreamInfo(Representable):
 
     def reset(self):
         self.lossy = True
-        self.resolution = self.RESOLUTION_LOW
+        self.resolution = None
         self.sampleRate = 0
         self.channels = 0
         self.bitsPerSample = 0
         self.bitRate = 0
         self.missingTags = 0
+
+    def get_info_strings(self):
+        r = super().get_info_strings()
+
+        mt = missing_tags_to_str(self.missingTags)
+        if mt:
+            r.append('Missing tags: %s' % mt)
+
+        return r
+
+
+def missing_tags_to_str(mtflags):
+    """Возвращает строку со списком тэгов,
+    соответствующих битовым полям mtflags (целого)."""
+
+    mt = []
+
+    for ixtag, tag in enumerate(TAGS):
+        if mtflags & (1 << ixtag):
+            mt.append(tag[0])
+
+    return  ', '.join(mt)
 
 
 class AudioFileInfo(AudioStreamInfo):
@@ -289,8 +340,16 @@ class AudioFileInfo(AudioStreamInfo):
         self.error = None
         self.mime = ''
 
+    def get_info_strings(self):
+        r = super().get_info_strings()
 
-class AudioDirectoryInfo(Representable):
+        if self.error:
+            r.append('Error: %s' % self.error)
+
+        return r
+
+
+class AudioDirectoryInfo(BaseAudioInfo):
     """Класс для сбора статистики по каталогу с аудиофайлами.
 
     minInfo, maxInfo - экземпляры AudioStreamInfo,
@@ -301,6 +360,7 @@ class AudioDirectoryInfo(Representable):
 
     def __init__(self):
         self.nFiles = 0
+        self.nErrors = 0
         self.minInfo = AudioStreamInfo()
         self.maxInfo = AudioStreamInfo()
 
@@ -310,11 +370,12 @@ class AudioDirectoryInfo(Representable):
         """Сброс счётчиков"""
 
         self.nFiles = 0
+        self.nErrors = 0
 
         self.minInfo.reset()
         # в "минимальное" поле кладём максимальные допустимые значения!
         self.minInfo.lossy = False
-        self.minInfo.resolution = False
+        self.minInfo.resolution = AudioStreamInfo.RESOLUTION_MAX
 
         self.minInfo.sampleRate = 100000000
         self.minInfo.channels = 16384
@@ -322,6 +383,28 @@ class AudioDirectoryInfo(Representable):
         self.minInfo.bitRate = 1000000000
 
         self.maxInfo.reset()
+        self.maxInfo.resolution = AudioStreamInfo.RESOLUTION_MIN
+
+    def flush(self):
+        """Сброс неиспользованных счётчиков.
+        Метод должен вызываться после завершения обхода каталога."""
+
+        if self.minInfo.sampleRate > self.maxInfo.sampleRate:
+            self.minInfo.sampleRate = 0
+
+        if self.minInfo.channels > self.maxInfo.channels:
+            self.minInfo.channels = 0
+
+        if self.minInfo.bitsPerSample > self.maxInfo.bitsPerSample:
+            self.minInfo.bitsPerSample = 0
+
+        if self.minInfo.bitRate > self.maxInfo.bitRate:
+            self.minInfo.bitRate = 0
+
+        if self.minInfo.resolution is not None\
+           and self.maxInfo.resolution is not None\
+           and self.minInfo.resolution > self.maxInfo.resolution:
+            self.minInfo.resolution = None
 
     def __update_min(self, nfo):
         """Пополнение "минимальных" счётчиков из экземпляра
@@ -339,6 +422,10 @@ class AudioDirectoryInfo(Representable):
         if self.minInfo.bitRate > nfo.bitRate:
             self.minInfo.bitRate = nfo.bitRate
 
+        if nfo.resolution is not None:
+            if self.minInfo.resolution < nfo.resolution:
+                self.minInfo.resolution = nfo.resolution
+
     def __update_max(self, nfo):
         """Пополнение "максимальных" счётчиков из экземпляра
         AudioStreamInfo."""
@@ -355,17 +442,21 @@ class AudioDirectoryInfo(Representable):
         if self.maxInfo.bitRate < nfo.bitRate:
             self.maxInfo.bitRate = nfo.bitRate
 
+        if nfo.resolution is not None:
+            if self.maxInfo.resolution > nfo.resolution:
+                self.maxInfo.resolution = nfo.resolution
+
     def update_from_dir(self, other):
         """Пополнение статистики из другого экземпляра
         (напр. при рекурсивном обходе каталогов)."""
 
-        self.nFiles += 1
+        self.nFiles += other.nFiles
+        self.nErrors += other.nErrors
 
         self.__update_min(other.minInfo)
         self.__update_max(other.maxInfo)
 
         self.minInfo.lossy |= other.minInfo.lossy
-        self.minInfo.resolution |= other.minInfo.resolution
         self.minInfo.missingTags |= other.minInfo.missingTags
 
     def update_from_file(self, nfo):
@@ -374,12 +465,27 @@ class AudioDirectoryInfo(Representable):
 
         self.nFiles += 1
 
-        self.__update_min(nfo)
-        self.__update_max(nfo)
+        if nfo.error:
+            self.nErrors += 1
+        else:
+            self.__update_min(nfo)
+            self.__update_max(nfo)
 
-        self.minInfo.lossy |= nfo.lossy
-        self.minInfo.resolution |= nfo.resolution
-        self.minInfo.missingTags |= nfo.missingTags
+            self.minInfo.lossy |= nfo.lossy
+
+            self.minInfo.missingTags |= nfo.missingTags
+
+    def get_info_strings(self):
+        r = super().get_info_strings()
+
+        mt = missing_tags_to_str(self.minInfo.missingTags)
+        if mt:
+            r.append('Missing tags: %s' % mt)
+
+        if self.nErrors:
+            r.append('Invalid files: %d' % self.nErrors)
+
+        return r
 
 
 def __test_scan_directory(path, cfg):

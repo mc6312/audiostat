@@ -24,10 +24,12 @@
 TITLE = 'AudioStat'
 VERSION = '1.2'
 TITLE_VERSION = '%s v%s' % (TITLE, VERSION)
+COPYLEFT = '🄯 2021 MC-6312'
+URL = 'https://github.com/mc6312/audiostat'
 
 
 def disp_int_val_k(i):
-    return '?' if not i else '%.1f' % (i / 1000.0)
+    return '?' if not i else i if isinstance(i, str) else '%.1f' % (i / 1000.0)
 
 
 def disp_int_val(i):

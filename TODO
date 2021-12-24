@@ -1,12 +1,14 @@
 __main__.py
   MainWnd.scan_statistics()
-    311: допилить выбор типов файлов
+    345: когда-нибудь всё это отрефакторить
 
-  MainWnd.scan_statistics()/__scan_directory()/__next_error()
-    335: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
+  MainWnd.scan_statistics()/__scan_directory()
+    382: возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
+
+asconfig.py
+  Config.__init__()
+    104: возможно, стоит перелопатить эту копипасту в более компактный вид с обходом списка и getattr/setattr
 
 audiostat.py
-     61: пополнить LOSSLESS_MIMETYPES при необходимости
-  AudioFileFilter.get_audio_file_info()
-    232: прикрутить фильтрацию для файлов с ошибками чтения и/или метаданных
+    61: пополнить LOSSLESS_MIMETYPES при необходимости
 

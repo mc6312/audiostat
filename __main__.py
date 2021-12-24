@@ -23,8 +23,8 @@ import sys
 from traceback import print_exception
 
 from gtktools import *
-from gi.repository import Gtk#, Gdk, GObject, Pango, GLib
-#from gi.repository.GdkPixbuf import Pixbuf
+from gi.repository import Gtk
+from gi.repository.GLib import markup_escape_text
 
 
 import mutagen
@@ -43,7 +43,8 @@ class MainWnd():
 
     # столбцы TreeModel дерева статистики
     STC_NAME, STC_SAMPLERATE, STC_CHANNELS, STC_BITSPERSAMPLE,\
-    STC_BITRATE, STC_LOSSY, STC_MISSINGTAGS, STC_LOWRES = range(8)
+    STC_BITRATE, STC_LOSSY, STC_MISSINGTAGS, STC_LOWRES,\
+    STC_ERRORS, STC_HINT = range(10)
 
     # столбцы TreeModel списка типов файлов
     FTC_CHECKED, FTC_NAME = range(2)
@@ -70,11 +71,13 @@ class MainWnd():
         headerBar.set_title(TITLE)
         headerBar.set_subtitle('v%s' % VERSION)
 
-        isize = 128 #!!!
-        self.window.set_icon(resldr.load_pixbuf('images/audiostat.svg',
-            isize, isize))
+        isize = Gtk.IconSize.lookup(Gtk.IconSize.DIALOG)[1] * 4 #!!!
+        logo = resldr.load_pixbuf('images/audiostat.svg', isize, isize)
+        self.window.set_icon(logo)
 
-        self.markIcon = load_system_icon('object-select-symbolic', Gtk.IconSize.MENU, False, symbolic=True)
+        self.iconLossyAudio = load_system_icon('network-cellular-signal-weak-symbolic', Gtk.IconSize.MENU, False, symbolic=True)
+        self.iconMissingTags = load_system_icon('dialog-warning', Gtk.IconSize.MENU, False, symbolic=True)
+        self.iconErrors = load_system_icon('dialog-error', Gtk.IconSize.MENU, False, symbolic=True)
 
         # индекс в кортеже - AudioStreamInfo.RESOLUTION_*
         self.resolutionIcons = tuple(map(lambda s: load_system_icon(s, Gtk.IconSize.MENU, symbolic=True),
@@ -110,16 +113,18 @@ class MainWnd():
 
         #
         # фильтрация по формату - без потерь/с потерями
-        self.boxFilterByFormat,\
-        self.chkFilterByLossless, self.rbtnFilterFmtLossless = get_ui_widgets(uibldr,
-            'boxFilterByFormat', 'chkFilterByLossless', 'rbtnFilterFmtLossless')
+        self.boxFilterByFormat, self.chkFilterByLossless,\
+        self.rbtnFilterFmtLossy, self.rbtnFilterFmtLossless = get_ui_widgets(uibldr,
+            'boxFilterByFormat', 'chkFilterByLossless',
+            'rbtnFilterFmtLossy', 'rbtnFilterFmtLossless')
 
         # здесь и далее - названия виджетов соответствуют полям AudioFileFilter,
         # и их состояние прямо здесь устанавливается из содержимого конфига
         self.chkFilterByLossless.set_active(self.cfg.filter.byLossless)
         self.boxFilterByFormat.set_sensitive(self.cfg.filter.byLossless)
 
-        self.rbtnFilterFmtLossless.set_active(self.cfg.filter.onlyLossless)
+        rb = self.rbtnFilterFmtLossless if self.cfg.filter.onlyLossless else self.rbtnFilterFmtLossy
+        rb.set_active(True)
 
         #
         # фильтрация по разрешению
@@ -170,6 +175,20 @@ class MainWnd():
         rb.set_active(True)
 
         #
+        # фильтрация по наличию ошибок в метаданных
+        self.chkFilterByErrors,\
+        self.rbtnFilterErrorsShow, self.rbtnFilterErrorsOnly = get_ui_widgets(uibldr,
+            'chkFilterByErrors', 'rbtnFilterErrorsShow', 'rbtnFilterErrorsOnly')
+
+        self.chkFilterByErrors.set_active(self.cfg.filter.byErrors)
+        if self.cfg.filter.withErrorsOnly:
+            rb = self.rbtnFilterErrorsOnly
+        else:
+            rb = self.rbtnFilterErrorsShow
+
+        rb.set_active(True)
+
+        #
         # progress page
         #
         self.labProgressPath, self.labProgressFiles,\
@@ -194,7 +213,15 @@ class MainWnd():
         self.tvBitsPerSample = TreeViewShell.new_from_uibuilder(uibldr, 'tvBitsPerSample')
 
         #
-        #self.entFileTypes.set_text(filetypes_to_str(self.cfg.fileTypes))
+        #
+        self.dlgAbout = uibldr.get_object('dlgAbout')
+        self.dlgAbout.set_logo(logo)
+        self.dlgAbout.set_program_name(TITLE)
+        #self.dlgAbout.set_comments(SUB_TITLE)
+        self.dlgAbout.set_version('v%s' % VERSION)
+        self.dlgAbout.set_copyright(COPYLEFT)
+        self.dlgAbout.set_website(URL)
+        self.dlgAbout.set_website_label(URL)
 
         #
         self.stopScanning = False
@@ -203,6 +230,11 @@ class MainWnd():
         self.__go_to_start_page()
 
         uibldr.connect_signals(self)
+
+    def mnuMainAbout_activate(self, wgt):
+        self.dlgAbout.show_all()
+        self.dlgAbout.run()
+        self.dlgAbout.hide()
 
     def chkFilterFileTypes_toggled(self, cb):
         self.cfg.filter.byFileTypes = cb.get_active()
@@ -217,6 +249,15 @@ class MainWnd():
 
     def rbtnFilterFmtLossy_toggled(self, rb):
         self.cfg.filter.onlyLossless = not rb.get_active()
+
+    def chkFilterByErrors_toggled(self, cb):
+        self.cfg.filter.byErrors = cb.get_active()
+
+    def rbtnFilterErrorsShow_toggled(self, rb):
+        self.cfg.filter.withErrorsOnly = not rb.get_active()
+
+    def rbtnFilterErrorsOnly_toggled(self, rb):
+        self.cfg.filter.withErrorsOnly = rb.get_active()
 
     def chkFilterByResolution_toggled(self, cb):
         self.cfg.filter.byResolution = cb.get_active()
@@ -297,20 +338,24 @@ class MainWnd():
                      )
 
         TS_MISTAGS = 'Missing tags'
+        TS_WITH_ERRORS = 'With errors'
 
         totalSummary = OrderedDict()
 
-        for nres in TS_BY_RES:
-            totalSummary[nres] = 0
+        #TODO когда-нибудь всё это отрефакторить
+        class SummaryTableItem():
+            __slots__ = 'value', 'icon'
 
-        totalSummary[TS_LOSSY] = 0
-        totalSummary[TS_MISTAGS] = 0
+            def __init__(self, v, i):
+                self.value = v
+                self.icon = i
 
-        #
-        self.cfg.fileTypes = DEFAULT_AUDIO_FILE_EXTS
-        #TODO допилить выбор типов файлов
-        warn('file type selection must be implemented!')
-        #str_to_filetypes(self.entFileTypes.get_text())
+        for ix,nres in enumerate(TS_BY_RES):
+            totalSummary[nres] = SummaryTableItem(0, self.resolutionIcons[ix])
+
+        totalSummary[TS_LOSSY] = SummaryTableItem(0, self.iconLossyAudio)
+        totalSummary[TS_MISTAGS] = SummaryTableItem(0, self.iconMissingTags)
+        totalSummary[TS_WITH_ERRORS] = SummaryTableItem(0, self.iconErrors)
 
         def __scan_directory(destNode, fdir):
             """Обход подкаталога.
@@ -332,6 +377,8 @@ class MainWnd():
                 self.progressErrors += 1
                 self.labProgressErrors.set_text(str(self.progressErrors))
 
+            __disp_resolution = lambda _nfo: None if _nfo.resolution is None else self.resolutionIcons[_nfo.resolution]
+
             #TODO возможно, придётся как-то отслеживать выход за пределы fdir симлинками?
             for fname in os.listdir(fdir):
                 if self.stopScanning:
@@ -340,10 +387,8 @@ class MainWnd():
                 fpath = os.path.abspath(os.path.join(fdir, fname))
 
                 if os.path.isdir(fpath):
-                    # столбцы TreeStore:
-                    # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags
                     subNode = self.tvStats.store.append(destNode,
-                        (fname, '', '', '', '', None, None, None))
+                        (fname, '', '', '', '', None, None, None, None, None))
 
                     subinfo = __scan_directory(subNode, fpath)
 
@@ -358,14 +403,16 @@ class MainWnd():
                             (self.STC_SAMPLERATE, self.STC_CHANNELS,
                              self.STC_BITSPERSAMPLE, self.STC_BITRATE,
                              self.STC_LOSSY, self.STC_MISSINGTAGS,
-                             self.STC_LOWRES),
+                             self.STC_LOWRES, self.STC_ERRORS, self.STC_HINT),
                             (disp_int_range_k(subinfo.minInfo.sampleRate, subinfo.maxInfo.sampleRate),
                              disp_int_range(subinfo.minInfo.channels, subinfo.maxInfo.channels),
                              disp_int_range(subinfo.minInfo.bitsPerSample, subinfo.maxInfo.bitsPerSample),
-                             disp_int_range_k(subinfo.minInfo.bitRate, subinfo.maxInfo.bitRate),
-                             disp_bool(subinfo.minInfo.lossy, self.markIcon),
-                             disp_bool(subinfo.minInfo.missingTags, self.markIcon),
-                             self.resolutionIcons[subinfo.minInfo.resolution],
+                             disp_int_range(subinfo.minInfo.bitRate, subinfo.maxInfo.bitRate),
+                             disp_bool(subinfo.minInfo.lossy, self.iconLossyAudio),
+                             disp_bool(subinfo.minInfo.missingTags, self.iconMissingTags),
+                             __disp_resolution(subinfo.minInfo),
+                             disp_bool(subinfo.nErrors > 0, self.iconErrors),
+                             markup_escape_text(subinfo.get_hint_str()),
                              ))
 
                 else:
@@ -377,56 +424,64 @@ class MainWnd():
                     if nfo:
                         if nfo.error:
                             __next_error('error reading file "%s" - %s' % (fname, nfo.error))
-                        else:
-                            dirinfo.update_from_file(nfo)
 
+                            totalSummary[TS_WITH_ERRORS].value += 1
+
+                            # захерачим файл в статистику без параметров
+                            self.tvStats.store.append(destNode,
+                                (fname, '?', '?', '?', '?', None, None, None,
+                                 self.iconErrors,
+                                 markup_escape_text('Error: %s' % nfo.error),
+                                 ))
+                        else:
                             # статистика по sampleRate
                             if nfo.sampleRate in totalSampleRates:
-                                totalSampleRates[nfo.sampleRate] += 1
+                                totalSampleRates[nfo.sampleRate].value += 1
                             else:
-                                totalSampleRates[nfo.sampleRate] = 1
+                                totalSampleRates[nfo.sampleRate] = SummaryTableItem(1, None)
 
                             # статистика по bitsPerSample
                             if nfo.bitsPerSample in totalBitsPerSample:
-                                totalBitsPerSample[nfo.bitsPerSample] += 1
+                                totalBitsPerSample[nfo.bitsPerSample].value += 1
                             else:
-                                totalBitsPerSample[nfo.bitsPerSample] = 1
+                                totalBitsPerSample[nfo.bitsPerSample] = SummaryTableItem(1, None)
 
                             # прочая статистика
                             if nfo.lossy:
-                                totalSummary[TS_LOSSY] += 1
+                                totalSummary[TS_LOSSY].value += 1
 
                             for ixres, nres in enumerate(TS_BY_RES):
                                 if nfo.resolution == ixres:
-                                    totalSummary[nres] += 1
+                                    totalSummary[nres].value += 1
 
                             if nfo.missingTags:
-                                totalSummary[TS_MISTAGS] += 1
+                                totalSummary[TS_MISTAGS].value += 1
 
                             #
                             self.progressAudioFiles += 1
                             self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
 
                             # захерачим файл в статистику
-                            # столбцы TreeStore:
-                            # name, samplerate, channels, bitspersample, bitrate, lossy, missingtags, lowres
                             self.tvStats.store.append(destNode,
                                 (fname,
                                  disp_int_val_k(nfo.sampleRate),
                                  disp_int_val(nfo.channels),
                                  disp_int_val(nfo.bitsPerSample),
-                                 disp_int_val_k(nfo.bitRate),
-                                 disp_bool(nfo.lossy, self.markIcon),
-                                 disp_bool(nfo.missingTags, self.markIcon),
-                                 self.resolutionIcons[nfo.resolution],
+                                 disp_int_val(nfo.bitRate),
+                                 disp_bool(nfo.lossy, self.iconLossyAudio),
+                                 disp_bool(nfo.missingTags, self.iconMissingTags),
+                                 __disp_resolution(nfo),
+                                 disp_bool(bool(nfo.error), self.iconErrors),
+                                 markup_escape_text(nfo.get_hint_str()),
                                  ))
 
-                        #error, lossy, mime, sampleRate, channels, bitsPerSample, missingTags
+                        dirinfo.update_from_file(nfo)
 
                     #
                     self.progressBar.pulse()
                     flush_gtk_events()
 
+            dirinfo.flush()
             return dirinfo
 
         #
@@ -450,7 +505,20 @@ class MainWnd():
         #
 
         def fill_summary_table(srcd, tv, tostr, _sort):
-            __pcts = lambda n: int(float(n) / self.progressAudioFiles * 100.0)
+            """Заполнение Gtk.ListStore статистической таблицы.
+
+            srcd    - словарь, где ключи - названия строк,
+                      а значения - кортежи вида ('имя параметра', значение, Pixbuf);
+                      последний элемент кортежа м.б. None,
+                      если отображение иконок не требуется;
+            tv      - экземпляр TreeViewShell;
+            tostr   - функция, преобразующая значение параметра в строку;
+            _sort   - булевское значение, True - сортировать таблицу по
+                      именам параметров;
+            icons   - булевское значение, True - последние элементы
+                      кортежей в словаре srcd содержат экземпляры Pixbuf."""
+
+            __pcts = lambda n: 0 if not self.progressAudioFiles else int(float(n) / self.progressAudioFiles * 100.0)
             __s_pcts = lambda n, p: '%d (%d%%)' % (n, p)
 
             tv.refresh_begin()
@@ -459,19 +527,22 @@ class MainWnd():
             if _sort:
                 dlst = sorted(dlst)
 
-            for param, nfiles in dlst:
-                if param != 0:
-                    pcts = __pcts(nfiles)
+            def __append_summary_table(param, sti):
+                if sti.value:
+                    pcts = __pcts(sti.value)
+
                     tv.store.append((tostr(param),
-                        __s_pcts(nfiles, pcts),
-                        pcts))
+                        __s_pcts(sti.value, pcts),
+                        pcts,
+                        sti.icon))
+
+            for param, sti in dlst:
+                if param != 0:
+                    __append_summary_table(param, sti)
 
             # сюда попадают файлы, где нет соотв. параметра в метаданных
             if 0 in srcd:
-                pcts = __pcts(nfiles)
-                tv.store.append(('other',
-                    __s_pcts(nfiles, pcts),
-                    __pcts(nfiles)))
+                __append_summary_table('?', srcd[0])
 
             tv.refresh_end()
 
@@ -546,12 +617,12 @@ class MainWnd():
         # дабы не зациклиться, если че рухнет в этом обработчике
         sys.excepthook = sys.__excepthook__
 
-        msg = 'Unhandled exception - %s' % exc_type.__name__
+        msg = '%s: %s' % (exc_type.__name__, str(exc_value))
 
         print('** %s' % msg, file=sys.stderr)
         print_exception(exc_type, exc_value, exc_traceback)
 
-        msg_dialog(self.window, 'Error', msg)
+        msg_dialog(self.window, 'Unhandled exception', msg)
 
         sys.exit(255)
 
