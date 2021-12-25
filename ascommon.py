@@ -28,6 +28,39 @@ COPYLEFT = '🄯 2021 MC-6312'
 URL = 'https://github.com/mc6312/audiostat'
 
 
+def set_from_str(v):
+    """Преобразование строки, разделённой пробелами, во множество строк"""
+
+    return set(map(lambda s: s.lower(), v.split(None)))
+
+
+def set_to_str(v):
+    return ' '.join(sorted(v))
+
+
+def str_to_int(v, vmin, vmax):
+    """Преобразование строки в целое с принудительным ограничением
+    диапазона значений."""
+
+    # если приехало что-то, непреобразуемое в целое -
+    # падаем с исключением, его обработает что-то снаружи
+    v = int(v)
+
+    if v < vmin:
+        v = vmin
+    elif v > vmax:
+        v = vmax
+
+    return v
+
+
+def str_to_bool(v):
+    try:
+        return bool(int(v))
+    except ValueError:
+        return v.lower() == 'true'
+
+
 def disp_int_val_k(i):
     return '?' if not i else i if isinstance(i, str) else '%.1f' % (i / 1000.0)
 

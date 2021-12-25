@@ -58,8 +58,9 @@ class MainWnd():
 
         Gtk.main_quit()
 
-    def __init__(self, _cfg):
-        self.cfg = _cfg
+    def __init__(self):
+        self.cfg = Config()
+        self.cfg.load()
 
         resldr = get_resource_loader()
         uibldr = get_gtk_builder(resldr, 'audiostat.ui')
@@ -113,48 +114,35 @@ class MainWnd():
 
         #
         # фильтрация по формату - без потерь/с потерями
-        self.boxFilterByFormat, self.chkFilterByLossless,\
-        self.rbtnFilterFmtLossy, self.rbtnFilterFmtLossless = get_ui_widgets(uibldr,
-            'boxFilterByFormat', 'chkFilterByLossless',
-            'rbtnFilterFmtLossy', 'rbtnFilterFmtLossless')
+        self.chkFilterByLossless, self.cboxFilterLossless = get_ui_widgets(uibldr,
+            'chkFilterByLossless', 'cboxFilterLossless')
 
-        # здесь и далее - названия виджетов соответствуют полям AudioFileFilter,
+        # здесь и далее - названия виджетов примерно соответствуют полям AudioFileFilter,
         # и их состояние прямо здесь устанавливается из содержимого конфига
         self.chkFilterByLossless.set_active(self.cfg.filter.byLossless)
-        self.boxFilterByFormat.set_sensitive(self.cfg.filter.byLossless)
+        self.cboxFilterLossless.set_sensitive(self.cfg.filter.byLossless)
 
-        rb = self.rbtnFilterFmtLossless if self.cfg.filter.onlyLossless else self.rbtnFilterFmtLossy
-        rb.set_active(True)
+        self.cboxFilterLossless.set_active(int(self.cfg.filter.onlyLossless))
 
         #
         # фильтрация по разрешению
-        self.boxFilterByResolution, self.chkFilterByResolution,\
-        self.rbtnFilterByResolutionLow, self.rbtnFilterByResolutionStd,\
-        self.rbtnFilterByResolutionHigh = get_ui_widgets(uibldr,
-            'boxFilterByResolution', 'chkFilterByResolution',
-            'rbtnFilterByResolutionLow', 'rbtnFilterByResolutionStd', 'rbtnFilterByResolutionHigh')
+        self.chkFilterByResolution, self.cboxFilterResolution = get_ui_widgets(uibldr,
+            'chkFilterByResolution', 'cboxFilterResolution')
 
         self.chkFilterByResolution.set_active(self.cfg.filter.byResolution)
-        self.boxFilterByResolution.set_sensitive(self.cfg.filter.byResolution)
+        self.cboxFilterResolution.set_sensitive(self.cfg.filter.byResolution)
 
-        if self.cfg.filter.resolution == AudioStreamInfo.RESOLUTION_LOW:
-            rb = self.rbtnFilterByResolutionLow
-        elif self.cfg.filter.resolution == AudioStreamInfo.RESOLUTION_STANDARD:
-            rb = self.rbtnFilterByResolutionStd
-        else:
-            rb = self.rbtnFilterByResolutionHigh
-
-        rb.set_active(True)
+        self.cboxFilterResolution.set_active(self.cfg.filter.resolution)
 
         #
         # фильтрация по битрейту
         self.chkFilterByBitrate, self.gridFilterByBitrate,\
         self.rbtnFilterBRLowerThan, self.rbtnFilterBRGreaterThan,\
-        self.entFilterBitrateMax, self.entFilterBitrateMin,\
+        self.spinFilterBitrateMax, self.spinFilterBitrateMin,\
         adjEntFilterBitrateGreater, adjEntFilterBitrateLower = get_ui_widgets(uibldr,
             'chkFilterByBitrate', 'gridFilterByBitrate',
             'rbtnFilterBRLowerThan', 'rbtnFilterBRGreaterThan',
-            'entFilterBitrateMax', 'entFilterBitrateMin',
+            'spinFilterBitrateMax', 'spinFilterBitrateMin',
             'adjEntFilterBitrateGreater', 'adjEntFilterBitrateLower')
 
         for adj in (adjEntFilterBitrateGreater, adjEntFilterBitrateLower):
@@ -169,24 +157,40 @@ class MainWnd():
         else:
             rb = self.rbtnFilterBRGreaterThan
 
-        self.entFilterBitrateMax.set_value(self.cfg.filter.bitrateLowerThanValue)
-        self.entFilterBitrateMin.set_value(self.cfg.filter.bitrateGreaterThanValue)
+        self.spinFilterBitrateMax.set_value(self.cfg.filter.bitrateLowerThanValue)
+        self.spinFilterBitrateMin.set_value(self.cfg.filter.bitrateGreaterThanValue)
 
         rb.set_active(True)
 
         #
+        # фильтрация по наличию параметров аудиопотока
+        self.chkFilterByContainsStreamParams, self.cboxFilterContainsStreamParams = get_ui_widgets(uibldr,
+            'chkFilterByContainsStreamParams', 'cboxFilterContainsStreamParams')
+
+        self.chkFilterByContainsStreamParams.set_active(self.cfg.filter.byContainsStreamParameters)
+        self.cboxFilterContainsStreamParams.set_sensitive(self.cfg.filter.byContainsStreamParameters)
+
+        self.cboxFilterContainsStreamParams.set_active(int(self.cfg.filter.onlyContainsStreamParameters))
+
+        #
         # фильтрация по наличию ошибок в метаданных
-        self.chkFilterByErrors,\
-        self.rbtnFilterErrorsShow, self.rbtnFilterErrorsOnly = get_ui_widgets(uibldr,
-            'chkFilterByErrors', 'rbtnFilterErrorsShow', 'rbtnFilterErrorsOnly')
+        self.chkFilterByErrors, self.cboxFilterErrors = get_ui_widgets(uibldr,
+            'chkFilterByErrors', 'cboxFilterErrors')
 
         self.chkFilterByErrors.set_active(self.cfg.filter.byErrors)
-        if self.cfg.filter.withErrorsOnly:
-            rb = self.rbtnFilterErrorsOnly
-        else:
-            rb = self.rbtnFilterErrorsShow
+        self.cboxFilterErrors.set_sensitive(self.cfg.filter.byErrors)
 
-        rb.set_active(True)
+        self.cboxFilterErrors.set_active(self.cfg.filter.onlyWithErrors)
+
+        #
+        # фильтрация по наличию важных тэгов
+        self.chkFilterByTags, self.cboxFilterTags = get_ui_widgets(uibldr,
+            'chkFilterByTags', 'cboxFilterTags')
+
+        self.chkFilterByTags.set_active(self.cfg.filter.byMissingTags)
+        self.cboxFilterTags.set_sensitive(self.cfg.filter.byMissingTags)
+
+        self.cboxFilterTags.set_active(int(self.cfg.filter.onlyMissingTags))
 
         #
         # progress page
@@ -236,60 +240,10 @@ class MainWnd():
         self.dlgAbout.run()
         self.dlgAbout.hide()
 
+    # фильтрация по типам файлов
     def chkFilterFileTypes_toggled(self, cb):
         self.cfg.filter.byFileTypes = cb.get_active()
         self.swFilterFileTypes.set_sensitive(self.cfg.filter.byFileTypes)
-
-    def chkFilterByLossless_toggled(self, cb):
-        self.cfg.filter.byLossless = cb.get_active()
-        self.boxFilterByFormat.set_sensitive(self.cfg.filter.byLossless)
-
-    def rbtnFilterFmtLossless_toggled(self, rb):
-        self.cfg.filter.onlyLossless = rb.get_active()
-
-    def rbtnFilterFmtLossy_toggled(self, rb):
-        self.cfg.filter.onlyLossless = not rb.get_active()
-
-    def chkFilterByErrors_toggled(self, cb):
-        self.cfg.filter.byErrors = cb.get_active()
-
-    def rbtnFilterErrorsShow_toggled(self, rb):
-        self.cfg.filter.withErrorsOnly = not rb.get_active()
-
-    def rbtnFilterErrorsOnly_toggled(self, rb):
-        self.cfg.filter.withErrorsOnly = rb.get_active()
-
-    def chkFilterByResolution_toggled(self, cb):
-        self.cfg.filter.byResolution = cb.get_active()
-        self.boxFilterByResolution.set_sensitive(self.cfg.filter.byResolution)
-
-    def rbtnFilterByResolutionLow_toggled(self, rb):
-        if rb.get_active():
-            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_LOW
-
-    def rbtnFilterByResolutionStd_toggled(self, rb):
-        if rb.get_active():
-            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_STANDARD
-
-    def rbtnFilterByResolutionHigh_toggled(self, rb):
-        if rb.get_active():
-            self.cfg.filter.resolution = AudioStreamInfo.RESOLUTION_HIGH
-
-    def chkFilterByBitrate_toggled(self, cb):
-        self.cfg.filter.byBitrate = cb.get_active()
-        self.gridFilterByBitrate.set_sensitive(self.cfg.filter.byBitrate)
-
-    def rbtnFilterBRLowerThan_toggled(self, rb):
-        self.cfg.filter.bitrateLowerThan = rb.get_active()
-
-    def rbtnFilterBRGreaterThan_toggled(self, rb):
-        self.cfg.filter.bitrateLowerThan = not rb.get_active()
-
-    def entFilterBitrateMax_value_changed(self, sb):
-        self.cfg.filter.bitrateLowerThanValue = sb.get_value_as_int()
-
-    def entFilterBitrateMin_value_changed(self, sb):
-        self.cfg.filter.bitrateGreaterThanValue = sb.get_value_as_int()
 
     def __toggle_filetype(self, path):
         itr = self.tvFilterFileTypes.store.get_iter(path)
@@ -316,7 +270,66 @@ class MainWnd():
         # (см. метод выше - ай спасибо гномеры за "единообразие!")
         self.__toggle_filetype(path)
 
+    # фильтрация по формату (с потерями/без потерь)
+    def chkFilterByLossless_toggled(self, cb):
+        self.cfg.filter.byLossless = cb.get_active()
+        self.cboxFilterLossless.set_sensitive(self.cfg.filter.byLossless)
+
+    def cboxFilterLossless_changed(self, cbox):
+        self.cfg.filter.onlyLossless = cbox.get_active() > 0
+
+    # фильтрация по наличию ошибок
+    def chkFilterByErrors_toggled(self, cb):
+        self.cfg.filter.byErrors = cb.get_active()
+        self.cboxFilterErrors.set_sensitive(self.cfg.filter.byErrors)
+
+    def cboxFilterErrors_changed(self, cbox):
+        self.cfg.filter.onlyWithErrors = cbox.get_active() > 0
+
+    # фильтрация по разрешению аудио
+    def chkFilterByResolution_toggled(self, cb):
+        self.cfg.filter.byResolution = cb.get_active()
+        self.cboxFilterResolution.set_sensitive(self.cfg.filter.byResolution)
+
+    def cboxFilterResolution_changed(self, cbox):
+        self.cfg.filter.resolution = cbox.get_active()
+
+    # фильтрация по битрейту
+    def chkFilterByBitrate_toggled(self, cb):
+        self.cfg.filter.byBitrate = cb.get_active()
+        self.gridFilterByBitrate.set_sensitive(self.cfg.filter.byBitrate)
+
+    def rbtnFilterBRLowerThan_toggled(self, rb):
+        self.cfg.filter.bitrateLowerThan = rb.get_active()
+
+    def rbtnFilterBRGreaterThan_toggled(self, rb):
+        self.cfg.filter.bitrateLowerThan = not rb.get_active()
+
+    def spinFilterBitrateMax_value_changed(self, sb):
+        self.cfg.filter.bitrateLowerThanValue = sb.get_value_as_int()
+
+    def spinFilterBitrateMin_value_changed(self, sb):
+        self.cfg.filter.bitrateGreaterThanValue = sb.get_value_as_int()
+
+    # фильтрация по наличию параметров аудиопотока
+    def chkFilterByContainsStreamParams_toggled(self, cb):
+        self.cfg.filter.byContainsStreamParameters = cb.get_active()
+        self.cboxFilterContainsStreamParams.set_sensitive(self.cfg.filter.byContainsStreamParameters)
+
+    def cboxFilterContainsStreamParams_changed(self, cbox):
+        self.cfg.filter.onlyContainsStreamParameters = cbox.get_active() > 0
+
+    # фильтрация по наличию важных тэгов
+    def chkFilterByTags_toggled(self, cb):
+        self.cfg.filter.byMissingTags = cb.get_active()
+        self.cboxFilterTags.set_sensitive(self.cfg.filter.byMissingTags)
+
+    def cboxFilterTags_changed(self, cbox):
+        self.cfg.filter.onlyMissingTags = cbox.get_active() > 0
+
     def scan_statistics(self):
+        """Сбор статистики"""
+
         self.stopScanning = False
 
         self.progressFiles = 0
@@ -392,7 +405,7 @@ class MainWnd():
 
                     subinfo = __scan_directory(subNode, fpath)
 
-                    if not subinfo.nFiles:
+                    if not subinfo or not subinfo.nFiles:
                         # нафига нам пустые каталоги?
                         self.tvStats.store.remove(subNode)
                     else:
@@ -626,17 +639,10 @@ class MainWnd():
 
         sys.exit(255)
 
-    def main(self):
+    def run(self):
         sys.excepthook = self.handle_unhandled
         Gtk.main()
 
 
-def main():
-    cfg = Config()
-    MainWnd(cfg).main()
-
-    return 0
-
-
 if __name__ == '__main__':
-    main()
+    MainWnd().run()

@@ -41,29 +41,11 @@ class Config(Representable):
             экземпляр класса FilterParams."""
 
     __S_SETTINGS = 'settings'
-    __V_LASTDIR = 'last-directory'
+    __V_LASTDIR = 'lastDirectory'
 
     __S_FILTERS = 'filters'
-    __V_FILTER_BY_FILETYPES = 'filter-by-file-types'
-    __V_FILTER_FILETYPES = 'file-types'
-    __V_FILTER_BY_CONTAINS_METADATA = 'filter-by-contains-metadata'
-    __V_FILTER_ONLY_CONTAINS_METADATA = 'contains-metadata'
-    __V_FILTER_BY_LOSSLESS = 'filter-by-lossless'
-    __V_FILTER_ONLY_LOSSLESS = 'filter-only-lossless'
-    __V_FILTER_BY_RESOLUTION = 'filter-by-hi-res'
-    __V_FILTER_RESOLUTION = 'filter-resolution'
-    __V_FILTER_BY_BITRATE = 'filter-by-bitrate'
-    __V_FILTER_BITRATE_LOWER = 'filter-bitrate-lower-than'
-    __V_FILTER_BITRATE_LOWER_VALUE = 'filter-bitrate-lower-value'
-    __V_FILTER_BITRATE_GREATER_VALUE = 'filter-bitrate-greater-value'
-    __V_FILTER_BY_ERRORS = 'filter-by-errors'
-    __V_FILTER_WITH_ERRORS_ONLY = 'filter-with-errors-only'
 
     def __init__(self):
-        #
-        # ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ
-        #
-
         #
         # основные настройки
         #
@@ -89,100 +71,44 @@ class Config(Representable):
             # тут предполагаем что-то *nix-образное, пусть даже и макось
             self.pathConfig = os.path.expanduser('~/.audiostat.cfg')
 
-        # пытаемся загрузить конфиг
-        cfg = ConfigParser()
-
+    def load(self):
         if not os.path.exists(self.pathConfig):
             return
 
+        # пытаемся загрузить конфиг
+        cfg = ConfigParser()
         cfg.read(self.pathConfig)
 
         #
         # тащим значения из конфига в поля сего объекта
         #
 
-        #TODO возможно, стоит перелопатить эту копипасту в более компактный вид с обходом списка и getattr/setattr
-
+        # основные
         self.lastDirectory = os.path.expanduser(cfg.get(self.__S_SETTINGS,
             self.__V_LASTDIR, fallback=self.lastDirectory))
 
-        #
-        self.filter.byFileTypes = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_FILETYPES, fallback=self.filter.byFileTypes)
-        self.filter.filetypes_from_str(cfg.get(self.__S_FILTERS,
-            self.__V_FILTER_FILETYPES, fallback=self.filter.filetypes_to_str()))
+        # фильтрация
+        for pname in AudioFileFilter.PARAMETERS:
+            s = cfg.get(self.__S_FILTERS, pname, fallback=None)
 
-        #
-        self.filter.byContainsMetadata = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_CONTAINS_METADATA, fallback=self.filter.byContainsMetadata)
-        self.filter.onlyContainsMetadata = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_ONLY_CONTAINS_METADATA, fallback=self.filter.onlyContainsMetadata)
-
-        #
-        self.filter.byLossless = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_LOSSLESS, fallback=self.filter.byLossless)
-        self.filter.onlyLossless = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_ONLY_LOSSLESS, fallback=self.filter.onlyLossless)
-
-        #
-        self.filter.byResolution = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_RESOLUTION, fallback=self.filter.byResolution)
-        self.filter.resolution = floor_ceil_int(cfg.getint(self.__S_FILTERS,
-            self.__V_FILTER_RESOLUTION, fallback=self.filter.resolution),
-            AudioStreamInfo.RESOLUTION_MIN, AudioStreamInfo.RESOLUTION_MAX)
-
-        #
-        self.filter.byBitrate = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_BITRATE, fallback=self.filter.byBitrate)
-        self.filter.bitrateLowerThan = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BITRATE_LOWER, fallback=self.filter.bitrateLowerThan)
-        self.filter.bitrateLowerThanValue = floor_ceil_int(cfg.getint(self.__S_FILTERS,
-            self.__V_FILTER_BITRATE_LOWER_VALUE, fallback=self.filter.bitrateLowerThanValue),
-            AudioStreamInfo.BITRATE_MIN, AudioStreamInfo.BITRATE_MAX)
-        self.filter.bitrateGreaterThanValue = floor_ceil_int(cfg.getint(self.__S_FILTERS,
-            self.__V_FILTER_BITRATE_GREATER_VALUE, fallback=self.filter.bitrateGreaterThanValue),
-            AudioStreamInfo.BITRATE_MIN, AudioStreamInfo.BITRATE_MAX)
-
-        #
-        self.filter.byErrors = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_BY_ERRORS, fallback=self.filter.byErrors)
-        self.filter.withErrorsOnly = cfg.getboolean(self.__S_FILTERS,
-            self.__V_FILTER_WITH_ERRORS_ONLY, fallback=self.filter.withErrorsOnly)
+            if s is not None:
+                try:
+                    self.filter.set_parameter_str(pname, s)
+                except Exception as ex:
+                    raise ValueError('Invalid parameter "%s" in section "%s" of file "%s" -  %s' % (
+                                     pname, self.__S_FILTERS, self.pathConfig, str(ex)))
 
     def save(self):
         cfg = ConfigParser()
         cfg.add_section(self.__S_SETTINGS)
         cfg.add_section(self.__S_FILTERS)
 
-        #
+        # основные
         cfg.set(self.__S_SETTINGS, self.__V_LASTDIR, self.lastDirectory)
 
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_FILETYPES, str(self.filter.byFileTypes))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_FILETYPES, self.filter.filetypes_to_str())
-
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_CONTAINS_METADATA, str(self.filter.byContainsMetadata))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_CONTAINS_METADATA, str(self.filter.onlyContainsMetadata))
-
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_LOSSLESS, str(self.filter.byLossless))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_ONLY_LOSSLESS, str(self.filter.onlyLossless))
-
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_RESOLUTION, str(self.filter.byResolution))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_RESOLUTION, str(self.filter.resolution))
-
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_BITRATE, str(self.filter.byBitrate))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER, str(self.filter.bitrateLowerThan))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_LOWER_VALUE, str(self.filter.bitrateLowerThanValue))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BITRATE_GREATER_VALUE, str(self.filter.bitrateGreaterThanValue))
-
-        #
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_BY_ERRORS, str(self.filter.byErrors))
-        cfg.set(self.__S_FILTERS, self.__V_FILTER_WITH_ERRORS_ONLY, str(self.filter.withErrorsOnly))
-
+        # фильтрация
+        for pname in AudioFileFilter.PARAMETERS:
+            cfg.set(self.__S_FILTERS, pname, self.filter.get_parameter_str(pname))
         #
         with open(self.pathConfig, 'w+') as f:
             cfg.write(f)
@@ -195,6 +121,9 @@ if __name__ == '__main__':
     print('[debugging %s]' % __file__)
 
     cfg = Config()
-    print(cfg)
+    print('\033[1mdefaults:\033[0m\n', cfg)
+
+    cfg.load()
+    print('\033[1mloaded:\033[0m\n', cfg)
 
     cfg.save()

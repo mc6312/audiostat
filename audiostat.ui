@@ -182,7 +182,7 @@
                 <property name="label-xalign">0</property>
                 <property name="shadow-type">in</property>
                 <child>
-                  <!-- n-columns=2 n-rows=6 -->
+                  <!-- n-columns=2 n-rows=5 -->
                   <object class="GtkGrid" id="gridFilters">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
@@ -202,221 +202,6 @@
                       <packing>
                         <property name="left-attach">0</property>
                         <property name="top-attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="boxFilterByFormat">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterFmtLossy">
-                            <property name="label" translatable="yes">lossy</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <property name="group">rbtnFilterFmtLossless</property>
-                            <signal name="toggled" handler="rbtnFilterFmtLossy_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterFmtLossless">
-                            <property name="label" translatable="yes">lossless</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <signal name="toggled" handler="rbtnFilterFmtLossless_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="linked"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="chkFilterByResolution">
-                        <property name="label" translatable="yes">_Resolution:</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
-                        <signal name="toggled" handler="chkFilterByResolution_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="boxFilterByResolution">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterByResolutionLow">
-                            <property name="label" translatable="yes">low</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <signal name="toggled" handler="rbtnFilterByResolutionLow_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterByResolutionStd">
-                            <property name="label" translatable="yes">std.</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <property name="group">rbtnFilterByResolutionLow</property>
-                            <signal name="toggled" handler="rbtnFilterByResolutionStd_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterByResolutionHigh">
-                            <property name="label" translatable="yes">high</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <property name="group">rbtnFilterByResolutionLow</property>
-                            <signal name="toggled" handler="rbtnFilterByResolutionHigh_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">2</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="linked"/>
-                        </style>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="chkFilterByBitrate">
-                        <property name="label" translatable="yes">_Bit rate (kbps):</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
-                        <signal name="toggled" handler="chkFilterByBitrate_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">3</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <!-- n-columns=2 n-rows=2 -->
-                      <object class="GtkGrid" id="gridFilterByBitrate">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="row-spacing">4</property>
-                        <property name="column-spacing">4</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterBRLowerThan">
-                            <property name="label" translatable="yes">&lt;</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <signal name="toggled" handler="rbtnFilterBRLowerThan_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="left-attach">0</property>
-                            <property name="top-attach">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkSpinButton" id="entFilterBitrateMax">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="activates-default">True</property>
-                            <property name="max-width-chars">8</property>
-                            <property name="input-purpose">digits</property>
-                            <property name="adjustment">adjEntFilterBitrateLower</property>
-                            <signal name="value-changed" handler="entFilterBitrateMax_value_changed" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="left-attach">1</property>
-                            <property name="top-attach">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterBRGreaterThan">
-                            <property name="label" translatable="yes">&gt;</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <property name="group">rbtnFilterBRLowerThan</property>
-                            <signal name="toggled" handler="rbtnFilterBRGreaterThan_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="left-attach">0</property>
-                            <property name="top-attach">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkSpinButton" id="entFilterBitrateMin">
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="activates-default">True</property>
-                            <property name="max-width-chars">8</property>
-                            <property name="text" translatable="yes">192</property>
-                            <property name="input-purpose">digits</property>
-                            <property name="adjustment">adjEntFilterBitrateGreater</property>
-                            <property name="value">192</property>
-                            <signal name="value-changed" handler="entFilterBitrateMin_value_changed" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="left-attach">1</property>
-                            <property name="top-attach">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">3</property>
                       </packing>
                     </child>
                     <child>
@@ -474,7 +259,7 @@
                         </child>
                         <child type="label">
                           <object class="GtkCheckButton" id="chkFilterFileTypes">
-                            <property name="label" translatable="yes">File _types:</property>
+                            <property name="label" translatable="yes">_Types:</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="receives-default">False</property>
@@ -491,8 +276,55 @@
                       </packing>
                     </child>
                     <child>
+                      <object class="GtkComboBoxText" id="cboxFilterLossless">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="active">0</property>
+                        <items>
+                          <item translatable="yes">lossy</item>
+                          <item translatable="yes">lossless</item>
+                        </items>
+                        <signal name="changed" handler="cboxFilterLossless_changed" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="chkFilterByContainsStreamParams">
+                        <property name="label" translatable="yes">_Stream parameters:</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">False</property>
+                        <property name="use-underline">True</property>
+                        <property name="draw-indicator">True</property>
+                        <signal name="toggled" handler="chkFilterByContainsStreamParams_toggled" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="cboxFilterContainsStreamParams">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="active">0</property>
+                        <items>
+                          <item translatable="yes">without parameters</item>
+                          <item translatable="yes">with parameters</item>
+                        </items>
+                        <signal name="changed" handler="cboxFilterContainsStreamParams_changed" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">2</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkCheckButton" id="chkFilterByErrors">
-                        <property name="label" translatable="yes">With _errors:</property>
+                        <property name="label" translatable="yes">_Errors:</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">False</property>
@@ -502,80 +334,205 @@
                       </object>
                       <packing>
                         <property name="left-attach">0</property>
-                        <property name="top-attach">5</property>
+                        <property name="top-attach">4</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkBox" id="boxFilterByErrors">
+                      <object class="GtkComboBoxText" id="cboxFilterErrors">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterErrorsShow">
-                            <property name="label" translatable="yes">show</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <signal name="toggled" handler="rbtnFilterErrorsShow_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rbtnFilterErrorsOnly">
-                            <property name="label" translatable="yes">only with errors</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="receives-default">False</property>
-                            <property name="active">True</property>
-                            <property name="draw-indicator">False</property>
-                            <property name="group">rbtnFilterErrorsShow</property>
-                            <signal name="toggled" handler="rbtnFilterErrorsOnly_toggled" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                        <style>
-                          <class name="linked"/>
-                        </style>
+                        <property name="active">0</property>
+                        <items>
+                          <item translatable="yes">without errors</item>
+                          <item translatable="yes">with errors</item>
+                        </items>
+                        <signal name="changed" handler="cboxFilterErrors_changed" swapped="no"/>
                       </object>
                       <packing>
                         <property name="left-attach">1</property>
-                        <property name="top-attach">5</property>
+                        <property name="top-attach">4</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkCheckButton" id="chkFilterByContainsMetadata">
-                        <property name="label" translatable="yes">_Metadata:</property>
+                      <object class="GtkFrame" id="frFilterNeedParameters">
                         <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label-xalign">0</property>
+                        <property name="shadow-type">in</property>
+                        <child>
+                          <!-- n-columns=2 n-rows=3 -->
+                          <object class="GtkGrid" id="gridFilterNeedParameters">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="border-width">4</property>
+                            <property name="row-spacing">4</property>
+                            <property name="column-spacing">4</property>
+                            <child>
+                              <object class="GtkCheckButton" id="chkFilterByResolution">
+                                <property name="label" translatable="yes">_Resolution:</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="use-underline">True</property>
+                                <property name="draw-indicator">True</property>
+                                <signal name="toggled" handler="chkFilterByResolution_toggled" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="cboxFilterResolution">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="active">0</property>
+                                <items>
+                                  <item translatable="yes">low</item>
+                                  <item translatable="yes">standard</item>
+                                  <item translatable="yes">high</item>
+                                </items>
+                                <signal name="changed" handler="cboxFilterResolution_changed" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="chkFilterByBitrate">
+                                <property name="label" translatable="yes">_Bit rate (kbps):</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="use-underline">True</property>
+                                <property name="draw-indicator">True</property>
+                                <signal name="toggled" handler="chkFilterByBitrate_toggled" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <!-- n-columns=2 n-rows=2 -->
+                              <object class="GtkGrid" id="gridFilterByBitrate">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="row-spacing">4</property>
+                                <property name="column-spacing">4</property>
+                                <child>
+                                  <object class="GtkRadioButton" id="rbtnFilterBRLowerThan">
+                                    <property name="label" translatable="yes">&lt;</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">False</property>
+                                    <property name="active">True</property>
+                                    <property name="draw-indicator">False</property>
+                                    <signal name="toggled" handler="rbtnFilterBRLowerThan_toggled" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">0</property>
+                                    <property name="top-attach">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="spinFilterBitrateMax">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="hexpand">True</property>
+                                    <property name="activates-default">True</property>
+                                    <property name="max-width-chars">8</property>
+                                    <property name="input-purpose">digits</property>
+                                    <property name="adjustment">adjEntFilterBitrateLower</property>
+                                    <signal name="value-changed" handler="spinFilterBitrateMax_value_changed" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">1</property>
+                                    <property name="top-attach">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkRadioButton" id="rbtnFilterBRGreaterThan">
+                                    <property name="label" translatable="yes">&gt;</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">False</property>
+                                    <property name="active">True</property>
+                                    <property name="draw-indicator">False</property>
+                                    <property name="group">rbtnFilterBRLowerThan</property>
+                                    <signal name="toggled" handler="rbtnFilterBRGreaterThan_toggled" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">0</property>
+                                    <property name="top-attach">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkSpinButton" id="spinFilterBitrateMin">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="hexpand">True</property>
+                                    <property name="activates-default">True</property>
+                                    <property name="max-width-chars">8</property>
+                                    <property name="text" translatable="yes">192</property>
+                                    <property name="input-purpose">digits</property>
+                                    <property name="adjustment">adjEntFilterBitrateGreater</property>
+                                    <property name="value">192</property>
+                                    <signal name="value-changed" handler="spinFilterBitrateMin_value_changed" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">1</property>
+                                    <property name="top-attach">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkCheckButton" id="chkFilterByTags">
+                                <property name="label" translatable="yes">T_ags:</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="receives-default">False</property>
+                                <property name="use-underline">True</property>
+                                <property name="draw-indicator">True</property>
+                                <signal name="toggled" handler="chkFilterByTags_toggled" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left-attach">0</property>
+                                <property name="top-attach">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="cboxFilterTags">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="active">0</property>
+                                <items>
+                                  <item translatable="yes">with all important tags</item>
+                                  <item translatable="yes">without important tags</item>
+                                </items>
+                                <signal name="changed" handler="cboxFilterTags_changed" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left-attach">1</property>
+                                <property name="top-attach">2</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label_item">
+                          <placeholder/>
+                        </child>
                       </object>
                       <packing>
                         <property name="left-attach">0</property>
-                        <property name="top-attach">4</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="chkFilterOnlyContainsMetadata">
-                        <property name="label" translatable="yes">&lt;FIXME!!!&gt;</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="draw-indicator">True</property>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">4</property>
+                        <property name="top-attach">3</property>
+                        <property name="width">2</property>
                       </packing>
                     </child>
                   </object>
@@ -584,7 +541,7 @@
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Filter by:</property>
+                    <property name="label" translatable="yes">Show files with:</property>
                   </object>
                 </child>
               </object>

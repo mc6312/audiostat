@@ -28,7 +28,7 @@ import sys
 import os
 import os.path
 import mutagen
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from enum import IntEnum
 from traceback import print_exception
 
@@ -73,186 +73,7 @@ TAGS = (('title', ('TITLE', 'TIT2')),
 
 
 # значение порога для фильтрации
-DEFAULTT_MIN_BITRATE = 192
-
-
-class AudioFileFilter(Representable):
-    """Параметры фильтрации аудиофайлов.
-
-    Поля:
-        byFileTypes:
-            булевское, True - фильтровать по типам (расширениям) файлов;
-        fileTypes:
-            множество строк - типов (расширений) файлов;
-            по умолчанию - DEFAULT_AUDIO_FILE_EXTS;
-
-        byContainsMetadata:
-            булевское, True - фильтровать по наличию метаданных в файле;
-        onlyContainsMetadata:
-            булевское, True - учитывать только файлы, содержащие
-            метаданные;
-
-        byLossless:
-            булевское, True - фильтровать по формату сжатия (без потерь/
-            с потерями);
-        onlyLossless:
-            булевское, True - учитывать только аудио, сжатое без потерь;
-
-        byResolution:
-            булевское, True - фильтровать по разрешению;
-        resolution:
-            AudioStream.Resolution;
-
-        byBitrate:
-            булевское, True - фильтровать по битрейту;
-        bitrateLowerThan:
-            булевское, True - учитывать аудио с битрейтом ниже указанного
-            значения;
-        bitrateLowerThanValue:
-            целое, максимальное значение битрейта (используется, если
-            BitrateLowerThan==True);
-        bitrateGreaterThanValue:
-            целое, минимальное значение битрейта (используется, если
-            BitrateLowerThan==False);
-
-        withErrors:
-            булевское, True - учитывать файлы с ошибками в метаданных."""
-
-    def __init__(self):
-        self.byFileTypes = False
-        self.fileTypes = DEFAULT_AUDIO_FILE_EXTS
-
-        self.byContainsMetadata = False
-        self.onlyContainsMetadata = False
-
-        self.byLossless = False
-        self.onlyLossless = True
-
-        self.byResolution = False
-        self.resolution = AudioStreamInfo.RESOLUTION_LOW
-
-        self.byBitrate = False
-        self.bitrateLowerThan = True
-        self.bitrateLowerThanValue = DEFAULTT_MIN_BITRATE
-        self.bitrateGreaterThanValue = DEFAULTT_MIN_BITRATE
-
-        self.byErrors = False
-        self.withErrorsOnly = False
-
-    def filetypes_from_str(self, fts):
-        self.fileTypes = set(map(lambda s: s.lower(), fts.split(None)))
-
-    def filetypes_to_str(self):
-        return ' '.join(sorted(self.fileTypes))
-
-    def get_audio_file_info(self, fpath):
-        """Проверка типа файла и извлечение параметров потока
-        и метаданных из аудиофайла.
-
-        Параметры:
-            fpath   - строка, полный путь к файлу;
-            fexts   - множество строк - расширений (типов) файлов.
-
-        Возвращает экземпляр AudioFileInfo, если файл - поддерживаемого
-        типа и соответствует параметрам фильтрации,
-        в прочих случаях - None."""
-
-        def __get_info_fld(info, name, fallback):
-            if name in info.__dict__:
-                return getattr(info, name)
-            else:
-                return fallback
-
-        fext = os.path.splitext(fpath)[-1].lower()
-
-        # расширение проверяем в любом случае:
-        # если указано "проверять тип" - по выбранным типам
-        # иначе - по всем известным типам
-        if fext not in (self.fileTypes if self.byFileTypes else DEFAULT_AUDIO_FILE_EXTS):
-            return
-
-        nfo = AudioFileInfo()
-
-        def __has_tags(fnfo, tnames):
-            for n in tnames:
-                if n in fnfo:
-                    return True
-
-            return False
-
-        try:
-            f = mutagen.File(fpath)
-
-            #
-            # фильтрация по указанным параметрам.
-            # файлы, не прошедшие фильтрацию - отбрасываем
-            #
-
-            if self.byErrors and self.withErrorsOnly:
-                # файл без ошибок, а тут мы хотим одних лишь ошибок
-                return
-
-            if not f:
-                if self.byContainsMetadata:
-                    if self.onlyContainsMetadata:
-                        return
-
-                # файл известного типа, но без метаданных поломатым не считается
-                return nfo
-
-            #
-            nfo.mime = str(f.mime[0])
-            nfo.lossy = nfo.mime not in LOSSLESS_MIMETYPES
-
-            if self.byLossless:
-                if self.onlyLossless == nfo.lossy:
-                    return
-
-            nfo.sampleRate = __get_info_fld(f.info, 'sample_rate', 0)
-            nfo.channels = __get_info_fld(f.info, 'channels', 1)
-            nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
-            nfo.bitRate = int(__get_info_fld(f.info, 'bitrate', 0) / 1024)
-
-            #
-            # пока проверка "на хайрез" приколочена гвоздями здесь
-            # потом
-            if nfo.bitsPerSample < 16 or nfo.sampleRate < 44100:
-                nfo.resolution = AudioStreamInfo.RESOLUTION_LOW
-            elif nfo.bitsPerSample > 16 and nfo.sampleRate >= 44100:
-                nfo.resolution = AudioStreamInfo.RESOLUTION_HIGH
-            else:
-                nfo.resolution = AudioStreamInfo.RESOLUTION_STANDARD
-
-            if self.byResolution:
-                if self.resolution != nfo.resolution:
-                    return
-
-            #
-            if self.byBitrate:
-                print(f'{nfo.bitRate=}, {self.bitrateLowerThan=}, {self.bitrateLowerThanValue=}, {self.bitrateGreaterThanValue=}')
-                if self.bitrateLowerThan:
-                    if nfo.bitRate > self.bitrateLowerThanValue:
-                        return
-                elif nfo.bitRate < self.bitrateGreaterThanValue:
-                    return
-
-            tags = getattr(f, 'tags', None)
-            if tags:
-                nfo.missingTags = 0
-
-                for ix, (_, tnames) in enumerate(TAGS):
-                    if not __has_tags(f, tnames):
-                        nfo.missingTags = nfo.missingTags or (1 << ix)
-
-        except mutagen.MutagenError as ex:
-            # с прочими исключениями - обязательно падаем!
-
-            if not self.byErrors:
-                return
-
-            nfo.error = str(ex)
-
-        return nfo
+DEFAULT_MIN_BITRATE = 192
 
 
 class BaseAudioInfo(Representable):
@@ -488,6 +309,262 @@ class AudioDirectoryInfo(BaseAudioInfo):
         return r
 
 
+class AudioFileFilter(Representable):
+    """Параметры фильтрации аудиофайлов.
+
+    Поля:
+        byFileTypes:
+            булевское, True - фильтровать по типам (расширениям) файлов;
+        fileTypes:
+            множество строк - типов (расширений) файлов;
+            по умолчанию - DEFAULT_AUDIO_FILE_EXTS;
+
+        byContainsStreamParameters:
+            булевское, True - фильтровать по наличию параметров
+            аудиопотока в файле;
+        onlyContainsStreamParameters:
+            булевское, True - учитывать только файлы, содержащие
+            параметры аудиопотока;
+            этот фильтр предназначен для выявления файлов, не поддерживаемых
+            mutagen (т.е. с ненулевой вероятностью - экзотических
+            или устаревших форматов);
+
+        byLossless:
+            булевское, True - фильтровать по формату сжатия (без потерь/
+            с потерями);
+        onlyLossless:
+            булевское, True - учитывать только аудио, сжатое без потерь;
+
+        byResolution:
+            булевское, True - фильтровать по разрешению;
+        resolution:
+            AudioStream.Resolution;
+
+        byBitrate:
+            булевское, True - фильтровать по битрейту;
+        bitrateLowerThan:
+            булевское, True - учитывать аудио с битрейтом ниже указанного
+            значения;
+        bitrateLowerThanValue:
+            целое, максимальное значение битрейта (используется, если
+            BitrateLowerThan==True);
+        bitrateGreaterThanValue:
+            целое, минимальное значение битрейта (используется, если
+            BitrateLowerThan==False);
+
+        byTags:
+            булевское, True - фильтровать по наличию всех важных тэгов
+            (перечисленных в списке TAGS);
+        onlyWithoutTags:
+            булевское, True - показывать только файлы, где нет хотя бы
+            одного важного тэга;
+
+        byErrors:
+            булевское, True - фильтровать файлы по наличию ошибок
+            обработки (разбора mutagen'ом);
+        withErrors:
+            булевское, True - показывать только файлы с ошибками."""
+
+    __fpar = namedtuple('__fpar', 'defval tostr fromstr')
+
+    # 'name':(default, tostr, fromstr)
+    PARAMETERS = OrderedDict({
+        'byFileTypes': __fpar(False, str, str_to_bool),
+        'fileTypes': __fpar(DEFAULT_AUDIO_FILE_EXTS, set_to_str, set_from_str),
+        'byContainsStreamParameters': __fpar(False, str, str_to_bool),
+        'onlyContainsStreamParameters': __fpar(False, str, str_to_bool),
+        'byMissingTags': __fpar(False, str, str_to_bool),
+        'onlyMissingTags': __fpar(True, str, str_to_bool),
+        'byLossless': __fpar(False, str, str_to_bool),
+        'onlyLossless': __fpar(True, str, str_to_bool),
+        'byResolution': __fpar(False, str, str_to_bool),
+        'resolution': __fpar(AudioStreamInfo.RESOLUTION_LOW, str,
+                            lambda s: str_to_int(s,
+                                AudioStreamInfo.RESOLUTION_MIN,
+                                AudioStreamInfo.RESOLUTION_MAX)),
+        'byBitrate': __fpar(False, str, str_to_bool),
+        'bitrateLowerThan': __fpar(True, str, str_to_bool),
+        'bitrateLowerThanValue': __fpar(DEFAULT_MIN_BITRATE, str,
+                            lambda s: str_to_int(s,
+                                AudioStreamInfo.BITRATE_MIN,
+                                AudioStreamInfo.BITRATE_MAX)),
+        'bitrateGreaterThanValue': __fpar(DEFAULT_MIN_BITRATE, str,
+                            lambda s: str_to_int(s,
+                                AudioStreamInfo.BITRATE_MIN,
+                                AudioStreamInfo.BITRATE_MAX)),
+        'byErrors': __fpar(False, str, str_to_bool),
+        'onlyWithErrors': __fpar(False, str, str_to_bool),
+        })
+
+    def __init__(self):
+        for pname, fpar in self.PARAMETERS.items():
+            setattr(self, pname, fpar.defval)
+
+    def get_parameter_str(self, pname):
+        """Возвращает значение параметра с именем pname, преобразованное
+        в строку."""
+
+        # ЗДЕСЬ: если pname неправильное, просто рухнем с исключением
+        # проверкой имён занимается класс Config
+        fpar = self.PARAMETERS[pname]
+
+        return fpar.tostr(getattr(self, pname))
+
+    def set_parameter_str(self, pname, v):
+        """Устанавливает значение параметра с именем "pname",
+        преобразовав его в нужный тип из строки."""
+
+        # ЗДЕСЬ: если pname неправильное, просто рухнем с исключением
+        # проверкой имён занимается класс Config
+        fpar = self.PARAMETERS[pname]
+
+        try:
+            setattr(self, pname, fpar.fromstr(v))
+        except Exception as ex:
+            raise ValueError('%s.set_parameter_str(): invalid value of parameter "%s" (%s)' % (
+                self.__class__.__name__, pname, str(ex)))
+
+    def filetypes_from_str(self, fts):
+        self.fileTypes = set_from_str(fts.split(None))
+
+    def filetypes_to_str(self):
+        return set_to_str(self.fileTypes)
+
+    def get_audio_file_info(self, fpath):
+        """Проверка типа файла и извлечение параметров потока
+        и метаданных из аудиофайла.
+
+        Параметры:
+            fpath   - строка, полный путь к файлу;
+            fexts   - множество строк - расширений (типов) файлов.
+
+        Возвращает экземпляр AudioFileInfo, если файл - поддерживаемого
+        типа и соответствует параметрам фильтрации,
+        в прочих случаях - None."""
+
+        def __get_info_fld(info, name, fallback):
+            if name in info.__dict__:
+                return getattr(info, name)
+            else:
+                return fallback
+
+        fext = os.path.splitext(fpath)[-1].lower()
+
+        # расширение проверяем в любом случае:
+        # если указано "проверять тип" - по выбранным типам
+        # иначе - по всем известным типам
+        if fext not in (self.fileTypes if self.byFileTypes else DEFAULT_AUDIO_FILE_EXTS):
+            return
+
+        nfo = AudioFileInfo()
+
+        def __has_tags(fnfo, tnames):
+            for n in tnames:
+                if n in fnfo:
+                    return True
+
+            return False
+
+        try:
+            f = mutagen.File(fpath)
+
+            #
+            # фильтрация по указанным параметрам.
+            # файлы, не прошедшие фильтрацию - отбрасываем
+            #
+
+            if self.byErrors and self.onlyWithErrors:
+                # файл без ошибок, а тут мы хотим одних лишь ошибок
+                return
+
+            #
+            hasParameters = 0
+
+            if f:
+                # извлекаем параметры и метаданные,
+                # фильтровать по всему этому будем потом
+
+                #
+                nfo.mime = str(f.mime[0])
+                nfo.lossy = nfo.mime not in LOSSLESS_MIMETYPES
+
+                #
+                nfo.sampleRate = __get_info_fld(f.info, 'sample_rate', 0)
+                nfo.channels = __get_info_fld(f.info, 'channels', 1)
+                nfo.bitsPerSample = __get_info_fld(f.info, 'bits_per_sample', 0)
+                nfo.bitRate = int(__get_info_fld(f.info, 'bitrate', 0) / 1024)
+
+                for v in (nfo.sampleRate, nfo.channels, nfo.bitsPerSample, nfo.bitRate):
+                    if v > 0:
+                        hasParameters += 1
+
+                #
+                tags = getattr(f, 'tags', None)
+                if tags:
+                    nfo.missingTags = 0
+
+                    for ix, (_, tnames) in enumerate(TAGS):
+                        if not __has_tags(f, tnames):
+                            nfo.missingTags = nfo.missingTags or (1 << ix)
+                # для тэгов hasParameters не трогаем, тэги - не параметры аудиопотока
+
+            #
+            # теперь уже пытаемся фильтровать
+            #
+
+            #
+            if self.byContainsStreamParameters:
+                if self.onlyContainsStreamParameters:
+                    if not hasParameters:
+                        return
+                else:
+                    if hasParameters:
+                        return
+
+            #
+            if self.byLossless and self.onlyLossless and nfo.lossy:
+                return
+
+            #
+            # пока проверка "на хайрез" приколочена гвоздями здесь
+            #
+            # ВНИМАНИЕ! файлы
+            if nfo.bitsPerSample < 16 or nfo.sampleRate < 44100:
+                nfo.resolution = AudioStreamInfo.RESOLUTION_LOW
+            elif nfo.bitsPerSample > 16 and nfo.sampleRate >= 44100:
+                nfo.resolution = AudioStreamInfo.RESOLUTION_HIGH
+            else:
+                nfo.resolution = AudioStreamInfo.RESOLUTION_STANDARD
+
+            if self.byResolution and self.resolution != nfo.resolution:
+                return
+
+            #
+            if self.byBitrate:
+                if self.bitrateLowerThan:
+                    if nfo.bitRate > self.bitrateLowerThanValue:
+                        return
+                elif nfo.bitRate < self.bitrateGreaterThanValue:
+                    return
+
+            #
+
+            if self.byMissingTags:
+                if (self.onlyMissingTags and nfo.missingTags == 0) or\
+                        (not self.onlyMissingTags and nfo.missingTags != 0):
+                    return
+
+        except mutagen.MutagenError as ex:
+            # с прочими исключениями - обязательно падаем!
+
+            if not self.byErrors:
+                return
+
+            nfo.error = str(ex)
+
+        return nfo
+
+
 def __test_scan_directory(path, cfg):
     print('\033[1m%s/\033[0m' % path)
 
@@ -512,4 +589,6 @@ if __name__ == '__main__':
     import asconfig
 
     cfg = asconfig.Config()
+    cfg.load()
+    print(cfg)
     __test_scan_directory(cfg.lastDirectory, cfg)
