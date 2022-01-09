@@ -22,7 +22,7 @@
 
 
 TITLE = 'AudioStat'
-VERSION = '1.2'
+VERSION = '1.3'
 TITLE_VERSION = '%s v%s' % (TITLE, VERSION)
 COPYLEFT = '🄯 2021 MC-6312'
 URL = 'https://github.com/mc6312/audiostat'

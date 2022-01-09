@@ -83,7 +83,7 @@
         <property name="can-focus">False</property>
         <property name="label" translatable="yes">Start/continue</property>
         <property name="use-underline">True</property>
-        <signal name="activate" handler="btnRun_clicked" swapped="no"/>
+        <signal name="activate" handler="phaseSwitchingWidget_clicked" swapped="no"/>
         <accelerator key="s" signal="activate" modifiers="GDK_CONTROL_MASK"/>
       </object>
     </child>
@@ -142,294 +142,243 @@
           <object class="GtkBox" id="pageStart">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">4</property>
             <child>
-              <object class="GtkFrame" id="frStartDir">
+              <object class="GtkBox" id="boxStartSettings">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label-xalign">0</property>
-                <property name="shadow-type">in</property>
+                <property name="spacing">4</property>
                 <child>
-                  <object class="GtkFileChooserWidget" id="fcStartDir">
+                  <object class="GtkFrame" id="frStartDir">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="border-width">4</property>
-                    <property name="action">select-folder</property>
-                    <property name="create-folders">False</property>
-                    <signal name="current-folder-changed" handler="fcStartDir_current_folder_changed" swapped="no"/>
-                  </object>
-                </child>
-                <child type="label">
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Start from _directory:</property>
-                    <property name="use-underline">True</property>
-                    <property name="mnemonic-widget">fcStartDir</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkFrame" id="frFilters">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="label-xalign">0</property>
-                <property name="shadow-type">in</property>
-                <child>
-                  <!-- n-columns=2 n-rows=5 -->
-                  <object class="GtkGrid" id="gridFilters">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="border-width">4</property>
-                    <property name="row-spacing">4</property>
-                    <property name="column-spacing">4</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">in</property>
                     <child>
-                      <object class="GtkCheckButton" id="chkFilterByLossless">
-                        <property name="label" translatable="yes">_Formats:</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
-                        <signal name="toggled" handler="chkFilterByLossless_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkFrame" id="frFilterFileTypes">
+                      <object class="GtkFileChooserWidget" id="fcStartDir">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
-                        <property name="label-xalign">0</property>
-                        <property name="shadow-type">in</property>
+                        <property name="border-width">4</property>
+                        <property name="action">select-folder</property>
+                        <property name="create-folders">False</property>
+                        <signal name="current-folder-changed" handler="fcStartDir_current_folder_changed" swapped="no"/>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Start from _directory:</property>
+                        <property name="use-underline">True</property>
+                        <property name="mnemonic-widget">fcStartDir</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkFrame" id="frFilters">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label-xalign">0</property>
+                    <property name="shadow-type">in</property>
+                    <child>
+                      <!-- n-columns=2 n-rows=5 -->
+                      <object class="GtkGrid" id="gridFilters">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="border-width">4</property>
+                        <property name="row-spacing">4</property>
+                        <property name="column-spacing">4</property>
                         <child>
-                          <object class="GtkScrolledWindow" id="swFilterFileTypes">
-                            <property name="height-request">128</property>
-                            <property name="visible">True</property>
-                            <property name="can-focus">True</property>
-                            <property name="border-width">4</property>
-                            <property name="hscrollbar-policy">never</property>
-                            <property name="shadow-type">in</property>
-                            <child>
-                              <object class="GtkTreeView" id="tvFilterFileTypes">
-                                <property name="visible">True</property>
-                                <property name="can-focus">True</property>
-                                <property name="model">lstoreFilterFileTypes</property>
-                                <property name="headers-visible">False</property>
-                                <property name="show-expanders">False</property>
-                                <property name="enable-grid-lines">both</property>
-                                <signal name="row-activated" handler="tvFilterFileTypes_row_activated" swapped="no"/>
-                                <child internal-child="selection">
-                                  <object class="GtkTreeSelection"/>
-                                </child>
-                                <child>
-                                  <object class="GtkTreeViewColumn" id="colFFTcheck">
-                                    <child>
-                                      <object class="GtkCellRendererToggle" id="crFFTcheck">
-                                        <signal name="toggled" handler="crFFTcheck_toggled" swapped="no"/>
-                                      </object>
-                                      <attributes>
-                                        <attribute name="active">0</attribute>
-                                      </attributes>
-                                    </child>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkTreeViewColumn" id="colFFTtext">
-                                    <property name="title" translatable="yes">File type</property>
-                                    <child>
-                                      <object class="GtkCellRendererText" id="crFFTtext"/>
-                                      <attributes>
-                                        <attribute name="text">1</attribute>
-                                      </attributes>
-                                    </child>
-                                  </object>
-                                </child>
-                              </object>
-                            </child>
-                          </object>
-                        </child>
-                        <child type="label">
-                          <object class="GtkCheckButton" id="chkFilterFileTypes">
-                            <property name="label" translatable="yes">_Types:</property>
+                          <object class="GtkCheckButton" id="chkFilterByLossless">
+                            <property name="label" translatable="yes">_Formats:</property>
                             <property name="visible">True</property>
                             <property name="can-focus">True</property>
                             <property name="receives-default">False</property>
                             <property name="use-underline">True</property>
                             <property name="draw-indicator">True</property>
-                            <signal name="toggled" handler="chkFilterFileTypes_toggled" swapped="no"/>
+                            <signal name="toggled" handler="chkFilterByLossless_toggled" swapped="no"/>
                           </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">1</property>
+                          </packing>
                         </child>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">0</property>
-                        <property name="width">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkComboBoxText" id="cboxFilterLossless">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="active">0</property>
-                        <items>
-                          <item translatable="yes">lossy</item>
-                          <item translatable="yes">lossless</item>
-                        </items>
-                        <signal name="changed" handler="cboxFilterLossless_changed" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="chkFilterByContainsStreamParams">
-                        <property name="label" translatable="yes">_Stream parameters:</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
-                        <signal name="toggled" handler="chkFilterByContainsStreamParams_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkComboBoxText" id="cboxFilterContainsStreamParams">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="active">0</property>
-                        <items>
-                          <item translatable="yes">without parameters</item>
-                          <item translatable="yes">with parameters</item>
-                        </items>
-                        <signal name="changed" handler="cboxFilterContainsStreamParams_changed" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkCheckButton" id="chkFilterByErrors">
-                        <property name="label" translatable="yes">_Errors:</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="use-underline">True</property>
-                        <property name="draw-indicator">True</property>
-                        <signal name="toggled" handler="chkFilterByErrors_toggled" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">4</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkComboBoxText" id="cboxFilterErrors">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="active">0</property>
-                        <items>
-                          <item translatable="yes">without errors</item>
-                          <item translatable="yes">with errors</item>
-                        </items>
-                        <signal name="changed" handler="cboxFilterErrors_changed" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="left-attach">1</property>
-                        <property name="top-attach">4</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkFrame" id="frFilterNeedParameters">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="label-xalign">0</property>
-                        <property name="shadow-type">in</property>
                         <child>
-                          <!-- n-columns=2 n-rows=3 -->
-                          <object class="GtkGrid" id="gridFilterNeedParameters">
+                          <object class="GtkFrame" id="frFilterFileTypes">
                             <property name="visible">True</property>
                             <property name="can-focus">False</property>
-                            <property name="border-width">4</property>
-                            <property name="row-spacing">4</property>
-                            <property name="column-spacing">4</property>
+                            <property name="label-xalign">0</property>
+                            <property name="shadow-type">in</property>
                             <child>
-                              <object class="GtkCheckButton" id="chkFilterByResolution">
-                                <property name="label" translatable="yes">_Resolution:</property>
+                              <object class="GtkScrolledWindow" id="swFilterFileTypes">
+                                <property name="height-request">128</property>
+                                <property name="visible">True</property>
+                                <property name="can-focus">True</property>
+                                <property name="border-width">4</property>
+                                <property name="hscrollbar-policy">never</property>
+                                <property name="shadow-type">in</property>
+                                <child>
+                                  <object class="GtkTreeView" id="tvFilterFileTypes">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="model">lstoreFilterFileTypes</property>
+                                    <property name="headers-visible">False</property>
+                                    <property name="show-expanders">False</property>
+                                    <property name="enable-grid-lines">both</property>
+                                    <signal name="row-activated" handler="tvFilterFileTypes_row_activated" swapped="no"/>
+                                    <child>
+                                      <object class="GtkTreeViewColumn" id="colFFTcheck">
+                                        <child>
+                                          <object class="GtkCellRendererToggle" id="crFFTcheck">
+                                            <signal name="toggled" handler="crFFTcheck_toggled" swapped="no"/>
+                                          </object>
+                                          <attributes>
+                                            <attribute name="active">0</attribute>
+                                          </attributes>
+                                        </child>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkTreeViewColumn" id="colFFTtext">
+                                        <property name="title" translatable="yes">File type</property>
+                                        <child>
+                                          <object class="GtkCellRendererText" id="crFFTtext"/>
+                                          <attributes>
+                                            <attribute name="text">1</attribute>
+                                          </attributes>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <child type="label">
+                              <object class="GtkCheckButton" id="chkFilterFileTypes">
+                                <property name="label" translatable="yes">_Types:</property>
                                 <property name="visible">True</property>
                                 <property name="can-focus">True</property>
                                 <property name="receives-default">False</property>
                                 <property name="use-underline">True</property>
                                 <property name="draw-indicator">True</property>
-                                <signal name="toggled" handler="chkFilterByResolution_toggled" swapped="no"/>
+                                <signal name="toggled" handler="chkFilterFileTypes_toggled" swapped="no"/>
                               </object>
-                              <packing>
-                                <property name="left-attach">0</property>
-                                <property name="top-attach">0</property>
-                              </packing>
                             </child>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">0</property>
+                            <property name="width">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkComboBoxText" id="cboxFilterLossless">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="active">0</property>
+                            <items>
+                              <item translatable="yes">lossy</item>
+                              <item translatable="yes">lossless</item>
+                            </items>
+                            <signal name="changed" handler="cboxFilterLossless_changed" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left-attach">1</property>
+                            <property name="top-attach">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="chkFilterByContainsStreamParams">
+                            <property name="label" translatable="yes">_Stream parameters:</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                            <signal name="toggled" handler="chkFilterByContainsStreamParams_toggled" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkComboBoxText" id="cboxFilterContainsStreamParams">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="active">0</property>
+                            <items>
+                              <item translatable="yes">without parameters</item>
+                              <item translatable="yes">with parameters</item>
+                            </items>
+                            <signal name="changed" handler="cboxFilterContainsStreamParams_changed" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left-attach">1</property>
+                            <property name="top-attach">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkCheckButton" id="chkFilterByErrors">
+                            <property name="label" translatable="yes">_Errors:</property>
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="receives-default">False</property>
+                            <property name="use-underline">True</property>
+                            <property name="draw-indicator">True</property>
+                            <signal name="toggled" handler="chkFilterByErrors_toggled" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">4</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkComboBoxText" id="cboxFilterErrors">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="active">0</property>
+                            <items>
+                              <item translatable="yes">without errors</item>
+                              <item translatable="yes">with errors</item>
+                            </items>
+                            <signal name="changed" handler="cboxFilterErrors_changed" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="left-attach">1</property>
+                            <property name="top-attach">4</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkFrame" id="frFilterNeedParameters">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="label-xalign">0</property>
+                            <property name="shadow-type">in</property>
                             <child>
-                              <object class="GtkComboBoxText" id="cboxFilterResolution">
+                              <!-- n-columns=2 n-rows=3 -->
+                              <object class="GtkGrid" id="gridFilterNeedParameters">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="active">0</property>
-                                <items>
-                                  <item translatable="yes">low</item>
-                                  <item translatable="yes">standard</item>
-                                  <item translatable="yes">high</item>
-                                </items>
-                                <signal name="changed" handler="cboxFilterResolution_changed" swapped="no"/>
-                              </object>
-                              <packing>
-                                <property name="left-attach">1</property>
-                                <property name="top-attach">0</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkCheckButton" id="chkFilterByBitrate">
-                                <property name="label" translatable="yes">_Bit rate (kbps):</property>
-                                <property name="visible">True</property>
-                                <property name="can-focus">True</property>
-                                <property name="receives-default">False</property>
-                                <property name="use-underline">True</property>
-                                <property name="draw-indicator">True</property>
-                                <signal name="toggled" handler="chkFilterByBitrate_toggled" swapped="no"/>
-                              </object>
-                              <packing>
-                                <property name="left-attach">0</property>
-                                <property name="top-attach">1</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <!-- n-columns=2 n-rows=2 -->
-                              <object class="GtkGrid" id="gridFilterByBitrate">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
+                                <property name="border-width">4</property>
                                 <property name="row-spacing">4</property>
                                 <property name="column-spacing">4</property>
                                 <child>
-                                  <object class="GtkRadioButton" id="rbtnFilterBRLowerThan">
-                                    <property name="label" translatable="yes">&lt;</property>
+                                  <object class="GtkCheckButton" id="chkFilterByResolution">
+                                    <property name="label" translatable="yes">_Resolution:</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="receives-default">False</property>
-                                    <property name="active">True</property>
-                                    <property name="draw-indicator">False</property>
-                                    <signal name="toggled" handler="rbtnFilterBRLowerThan_toggled" swapped="no"/>
+                                    <property name="use-underline">True</property>
+                                    <property name="draw-indicator">True</property>
+                                    <signal name="toggled" handler="chkFilterByResolution_toggled" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left-attach">0</property>
@@ -437,15 +386,16 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkSpinButton" id="spinFilterBitrateMax">
+                                  <object class="GtkComboBoxText" id="cboxFilterResolution">
                                     <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="hexpand">True</property>
-                                    <property name="activates-default">True</property>
-                                    <property name="max-width-chars">8</property>
-                                    <property name="input-purpose">digits</property>
-                                    <property name="adjustment">adjEntFilterBitrateLower</property>
-                                    <signal name="value-changed" handler="spinFilterBitrateMax_value_changed" swapped="no"/>
+                                    <property name="can-focus">False</property>
+                                    <property name="active">0</property>
+                                    <items>
+                                      <item translatable="yes">low</item>
+                                      <item translatable="yes">standard</item>
+                                      <item translatable="yes">high</item>
+                                    </items>
+                                    <signal name="changed" handler="cboxFilterResolution_changed" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left-attach">1</property>
@@ -453,15 +403,14 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkRadioButton" id="rbtnFilterBRGreaterThan">
-                                    <property name="label" translatable="yes">&gt;</property>
+                                  <object class="GtkCheckButton" id="chkFilterByBitrate">
+                                    <property name="label" translatable="yes">_Bit rate (kbps):</property>
                                     <property name="visible">True</property>
                                     <property name="can-focus">True</property>
                                     <property name="receives-default">False</property>
-                                    <property name="active">True</property>
-                                    <property name="draw-indicator">False</property>
-                                    <property name="group">rbtnFilterBRLowerThan</property>
-                                    <signal name="toggled" handler="rbtnFilterBRGreaterThan_toggled" swapped="no"/>
+                                    <property name="use-underline">True</property>
+                                    <property name="draw-indicator">True</property>
+                                    <signal name="toggled" handler="chkFilterByBitrate_toggled" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left-attach">0</property>
@@ -469,80 +418,224 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkSpinButton" id="spinFilterBitrateMin">
+                                  <!-- n-columns=2 n-rows=2 -->
+                                  <object class="GtkGrid" id="gridFilterByBitrate">
                                     <property name="visible">True</property>
-                                    <property name="can-focus">True</property>
-                                    <property name="hexpand">True</property>
-                                    <property name="activates-default">True</property>
-                                    <property name="max-width-chars">8</property>
-                                    <property name="text" translatable="yes">192</property>
-                                    <property name="input-purpose">digits</property>
-                                    <property name="adjustment">adjEntFilterBitrateGreater</property>
-                                    <property name="value">192</property>
-                                    <signal name="value-changed" handler="spinFilterBitrateMin_value_changed" swapped="no"/>
+                                    <property name="can-focus">False</property>
+                                    <property name="row-spacing">4</property>
+                                    <property name="column-spacing">4</property>
+                                    <child>
+                                      <object class="GtkRadioButton" id="rbtnFilterBRLowerThan">
+                                        <property name="label" translatable="yes">&lt;</property>
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">True</property>
+                                        <property name="receives-default">False</property>
+                                        <property name="active">True</property>
+                                        <property name="draw-indicator">False</property>
+                                        <signal name="toggled" handler="rbtnFilterBRLowerThan_toggled" swapped="no"/>
+                                      </object>
+                                      <packing>
+                                        <property name="left-attach">0</property>
+                                        <property name="top-attach">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkSpinButton" id="spinFilterBitrateMax">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">True</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="activates-default">True</property>
+                                        <property name="max-width-chars">8</property>
+                                        <property name="input-purpose">digits</property>
+                                        <property name="adjustment">adjEntFilterBitrateLower</property>
+                                        <signal name="value-changed" handler="spinFilterBitrateMax_value_changed" swapped="no"/>
+                                      </object>
+                                      <packing>
+                                        <property name="left-attach">1</property>
+                                        <property name="top-attach">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkRadioButton" id="rbtnFilterBRGreaterThan">
+                                        <property name="label" translatable="yes">&gt;</property>
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">True</property>
+                                        <property name="receives-default">False</property>
+                                        <property name="active">True</property>
+                                        <property name="draw-indicator">False</property>
+                                        <property name="group">rbtnFilterBRLowerThan</property>
+                                        <signal name="toggled" handler="rbtnFilterBRGreaterThan_toggled" swapped="no"/>
+                                      </object>
+                                      <packing>
+                                        <property name="left-attach">0</property>
+                                        <property name="top-attach">1</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkSpinButton" id="spinFilterBitrateMin">
+                                        <property name="visible">True</property>
+                                        <property name="can-focus">True</property>
+                                        <property name="hexpand">True</property>
+                                        <property name="activates-default">True</property>
+                                        <property name="max-width-chars">8</property>
+                                        <property name="text" translatable="yes">192</property>
+                                        <property name="input-purpose">digits</property>
+                                        <property name="adjustment">adjEntFilterBitrateGreater</property>
+                                        <property name="value">192</property>
+                                        <signal name="value-changed" handler="spinFilterBitrateMin_value_changed" swapped="no"/>
+                                      </object>
+                                      <packing>
+                                        <property name="left-attach">1</property>
+                                        <property name="top-attach">1</property>
+                                      </packing>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="left-attach">1</property>
                                     <property name="top-attach">1</property>
                                   </packing>
                                 </child>
+                                <child>
+                                  <object class="GtkCheckButton" id="chkFilterByTags">
+                                    <property name="label" translatable="yes">T_ags:</property>
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">True</property>
+                                    <property name="receives-default">False</property>
+                                    <property name="use-underline">True</property>
+                                    <property name="draw-indicator">True</property>
+                                    <signal name="toggled" handler="chkFilterByTags_toggled" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">0</property>
+                                    <property name="top-attach">2</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkComboBoxText" id="cboxFilterTags">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="active">0</property>
+                                    <items>
+                                      <item translatable="yes">with all important tags</item>
+                                      <item translatable="yes">without important tags</item>
+                                    </items>
+                                    <signal name="changed" handler="cboxFilterTags_changed" swapped="no"/>
+                                  </object>
+                                  <packing>
+                                    <property name="left-attach">1</property>
+                                    <property name="top-attach">2</property>
+                                  </packing>
+                                </child>
                               </object>
-                              <packing>
-                                <property name="left-attach">1</property>
-                                <property name="top-attach">1</property>
-                              </packing>
                             </child>
-                            <child>
-                              <object class="GtkCheckButton" id="chkFilterByTags">
-                                <property name="label" translatable="yes">T_ags:</property>
-                                <property name="visible">True</property>
-                                <property name="can-focus">True</property>
-                                <property name="receives-default">False</property>
-                                <property name="use-underline">True</property>
-                                <property name="draw-indicator">True</property>
-                                <signal name="toggled" handler="chkFilterByTags_toggled" swapped="no"/>
-                              </object>
-                              <packing>
-                                <property name="left-attach">0</property>
-                                <property name="top-attach">2</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkComboBoxText" id="cboxFilterTags">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="active">0</property>
-                                <items>
-                                  <item translatable="yes">with all important tags</item>
-                                  <item translatable="yes">without important tags</item>
-                                </items>
-                                <signal name="changed" handler="cboxFilterTags_changed" swapped="no"/>
-                              </object>
-                              <packing>
-                                <property name="left-attach">1</property>
-                                <property name="top-attach">2</property>
-                              </packing>
+                            <child type="label_item">
+                              <placeholder/>
                             </child>
                           </object>
-                        </child>
-                        <child type="label_item">
-                          <placeholder/>
+                          <packing>
+                            <property name="left-attach">0</property>
+                            <property name="top-attach">3</property>
+                            <property name="width">2</property>
+                          </packing>
                         </child>
                       </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Show files with:</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox" id="boxProgress">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="valign">center</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">4</property>
+                <child>
+                  <object class="GtkLabel" id="labProgressPath">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="hexpand">True</property>
+                    <property name="label" translatable="yes">...</property>
+                    <property name="ellipsize">middle</property>
+                    <property name="single-line-mode">True</property>
+                    <property name="xalign">0</property>
+                    <attributes>
+                      <attribute name="weight" value="bold"/>
+                    </attributes>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="spacing">4</property>
+                    <child>
+                      <object class="GtkLabel" id="labProgressFiles">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">Files found:</property>
+                        <property name="xalign">0</property>
+                      </object>
                       <packing>
-                        <property name="left-attach">0</property>
-                        <property name="top-attach">3</property>
-                        <property name="width">2</property>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="labProgressFileCount">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="label" translatable="yes">0</property>
+                        <property name="xalign">0</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
                   </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">1</property>
+                  </packing>
                 </child>
-                <child type="label">
-                  <object class="GtkLabel">
+                <child>
+                  <object class="GtkProgressBar" id="progressBar">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">Show files with:</property>
+                    <property name="hexpand">True</property>
                   </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">3</property>
+                  </packing>
                 </child>
               </object>
               <packing>
@@ -554,162 +647,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkBox" id="pageProgress">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="orientation">vertical</property>
-            <child>
-              <object class="GtkAspectFrame">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="hexpand">True</property>
-                <property name="vexpand">True</property>
-                <property name="label-xalign">0</property>
-                <property name="shadow-type">none</property>
-                <child>
-                  <object class="GtkBox">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="valign">center</property>
-                    <property name="orientation">vertical</property>
-                    <property name="spacing">4</property>
-                    <child>
-                      <object class="GtkLabel" id="labProgressPath">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="hexpand">True</property>
-                        <property name="label" translatable="yes">...</property>
-                        <property name="ellipsize">middle</property>
-                        <property name="single-line-mode">True</property>
-                        <attributes>
-                          <attribute name="weight" value="bold"/>
-                        </attributes>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <!-- n-columns=2 n-rows=3 -->
-                      <object class="GtkGrid">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="halign">center</property>
-                        <property name="hexpand">True</property>
-                        <property name="row-spacing">4</property>
-                        <property name="column-spacing">4</property>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">Total files found:</property>
-                            <property name="xalign">1</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">0</property>
-                            <property name="top-attach">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">Errors:</property>
-                            <property name="xalign">1</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">0</property>
-                            <property name="top-attach">2</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="labProgressErrors">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">0</property>
-                            <property name="xalign">0</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">1</property>
-                            <property name="top-attach">2</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="labProgressAudioFiles">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">0</property>
-                            <property name="xalign">0</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">1</property>
-                            <property name="top-attach">1</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="labProgressFiles">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">0</property>
-                            <property name="xalign">0</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">1</property>
-                            <property name="top-attach">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkLabel">
-                            <property name="visible">True</property>
-                            <property name="can-focus">False</property>
-                            <property name="hexpand">True</property>
-                            <property name="label" translatable="yes">Audio files:</property>
-                            <property name="xalign">1</property>
-                          </object>
-                          <packing>
-                            <property name="left-attach">0</property>
-                            <property name="top-attach">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkProgressBar" id="progressBar">
-                        <property name="visible">True</property>
-                        <property name="can-focus">False</property>
-                        <property name="hexpand">True</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">3</property>
-                      </packing>
-                    </child>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="position">1</property>
-          </packing>
+          <placeholder/>
         </child>
         <child>
           <object class="GtkBox" id="pageStats">
@@ -1106,7 +1044,7 @@ tags</property>
             <property name="can-default">True</property>
             <property name="has-default">True</property>
             <property name="receives-default">True</property>
-            <signal name="clicked" handler="btnRun_clicked" swapped="no"/>
+            <signal name="clicked" handler="phaseSwitchingWidget_clicked" swapped="no"/>
             <style>
               <class name="suggested-action"/>
             </style>

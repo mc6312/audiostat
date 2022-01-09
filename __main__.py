@@ -39,7 +39,8 @@ from asconfig import *
 
 
 class MainWnd():
-    PAGE_START, PAGE_PROGRESS, PAGE_STATS = range(3)
+    PAGE_START, PAGE_RESULT = range(2)
+    PHASE_START_PAGE, PHASE_SCANNING, PHASE_RESULT = range(3)
 
     # столбцы TreeModel дерева статистики
     STC_NAME, STC_SAMPLERATE, STC_CHANNELS, STC_BITSPERSAMPLE,\
@@ -93,7 +94,10 @@ class MainWnd():
         #
         # start page
         #
-        self.fcStartDir = uibldr.get_object('fcStartDir')
+
+        self.boxStartSettings, self.fcStartDir = get_ui_widgets(uibldr,
+            'boxStartSettings', 'fcStartDir')
+
         # потому как текущая версия Glade (3.38.x) - косяк на косяке
         self.fcStartDir.set_action(Gtk.FileChooserAction.SELECT_FOLDER)
 
@@ -193,13 +197,14 @@ class MainWnd():
         self.cboxFilterTags.set_active(int(self.cfg.filter.onlyMissingTags))
 
         #
-        # progress page
+        # progress
         #
-        self.labProgressPath, self.labProgressFiles,\
-        self.labProgressAudioFiles, self.labProgressErrors,\
+        self.boxProgress, self.labProgressPath,\
+        self.labProgressFiles, self.labProgressFileCount,\
         self.progressBar = get_ui_widgets(uibldr,
-            'labProgressPath', 'labProgressFiles', 'labProgressAudioFiles',
-            'labProgressErrors', 'progressBar')
+            'boxProgress', 'labProgressPath',
+            'labProgressFiles', 'labProgressFileCount',
+            'progressBar')
 
         #
         # stats page
@@ -229,9 +234,11 @@ class MainWnd():
 
         #
         self.stopScanning = False
+        self.phase = self.PHASE_START_PAGE
 
         self.window.show_all()
-        self.__go_to_start_page()
+
+        self.phase_start_page()
 
         uibldr.connect_signals(self)
 
@@ -332,9 +339,7 @@ class MainWnd():
 
         self.stopScanning = False
 
-        self.progressFiles = 0
         self.progressAudioFiles = 0
-        self.progressErrors = 0
 
         # ключи - значения AudioStreamInfo.sampleRate, значения - кол-во файлов
         totalSampleRates = dict()
@@ -370,7 +375,57 @@ class MainWnd():
         totalSummary[TS_MISTAGS] = SummaryTableItem(0, self.iconMissingTags)
         totalSummary[TS_WITH_ERRORS] = SummaryTableItem(0, self.iconErrors)
 
-        def __scan_directory(destNode, fdir):
+        #
+        # проход 1: сбор списка файлов на обработку
+        #
+        self.labProgressFiles.set_text('Files found:')
+
+        def __scan_progress(fpath, nFiles):
+            self.labProgressPath.set_text(fpath)
+            self.labProgressFileCount.set_text(str(nFiles))
+            self.progressBar.pulse()
+            flush_gtk_events()
+            return True
+
+        ftree = AudioFileList(self.cfg.lastDirectory, self.cfg.filter, __scan_progress)
+
+        self.labProgressFiles.set_text('Files processed:')
+
+        #
+        # проход 2: обработка найденных файлов
+        #
+        self.currentFileNumber = 0
+
+        def __process_diritem(node, diritem, parent):
+            fpath = os.path.join(parent, diritem.name)
+
+            if diritem.isdir:
+                # подкаталог
+                self.labProgressPath.set_text(fpath)
+                print('Scanning "%s"' % fpath, file=sys.stderr)
+
+                raise NotImplementedError('всю эту хуйню надо переписать!')
+
+                if not fprocess(fpath, **kwdata):
+                    return False
+
+                self.currentFileNumber += 1
+            else:
+                if not fprogress(fpath, self.currentFileNumber, self.totalFiles):
+                    return False
+
+                for i in diritem.children:
+                    if not __process_diritem(i, fpath):
+                        return False
+
+            return True
+
+        self.currentFileNumber = 0
+        __process_diritem(self.files, '')
+
+        return
+
+        def __process_directory(destNode, fdir):
             """Обход подкаталога.
 
             Параметры:
@@ -386,9 +441,6 @@ class MainWnd():
 
             def __next_error(msg):
                 print(msg, file=sys.stderr)
-
-                self.progressErrors += 1
-                self.labProgressErrors.set_text(str(self.progressErrors))
 
             __disp_resolution = lambda _nfo: None if _nfo.resolution is None else self.resolutionIcons[_nfo.resolution]
 
@@ -429,66 +481,64 @@ class MainWnd():
                              ))
 
                 else:
-                    self.progressFiles += 1
-                    self.labProgressFiles.set_text(str(self.progressFiles))
+                    if self.cfg.filter.file_match_types(fname):
+                        nfo = self.cfg.filter.get_audio_file_info(fpath)
 
-                    nfo = self.cfg.filter.get_audio_file_info(fpath)
+                        if nfo:
+                            if nfo.error:
+                                __next_error('error reading file "%s" - %s' % (fname, nfo.error))
 
-                    if nfo:
-                        if nfo.error:
-                            __next_error('error reading file "%s" - %s' % (fname, nfo.error))
+                                totalSummary[TS_WITH_ERRORS].value += 1
 
-                            totalSummary[TS_WITH_ERRORS].value += 1
-
-                            # захерачим файл в статистику без параметров
-                            self.tvStats.store.append(destNode,
-                                (fname, '?', '?', '?', '?', None, None, None,
-                                 self.iconErrors,
-                                 markup_escape_text('Error: %s' % nfo.error),
-                                 ))
-                        else:
-                            # статистика по sampleRate
-                            if nfo.sampleRate in totalSampleRates:
-                                totalSampleRates[nfo.sampleRate].value += 1
+                                # захерачим файл в статистику без параметров
+                                self.tvStats.store.append(destNode,
+                                    (fname, '?', '?', '?', '?', None, None, None,
+                                     self.iconErrors,
+                                     markup_escape_text('Error: %s' % nfo.error),
+                                     ))
                             else:
-                                totalSampleRates[nfo.sampleRate] = SummaryTableItem(1, None)
+                                # статистика по sampleRate
+                                if nfo.sampleRate in totalSampleRates:
+                                    totalSampleRates[nfo.sampleRate].value += 1
+                                else:
+                                    totalSampleRates[nfo.sampleRate] = SummaryTableItem(1, None)
 
-                            # статистика по bitsPerSample
-                            if nfo.bitsPerSample in totalBitsPerSample:
-                                totalBitsPerSample[nfo.bitsPerSample].value += 1
-                            else:
-                                totalBitsPerSample[nfo.bitsPerSample] = SummaryTableItem(1, None)
+                                # статистика по bitsPerSample
+                                if nfo.bitsPerSample in totalBitsPerSample:
+                                    totalBitsPerSample[nfo.bitsPerSample].value += 1
+                                else:
+                                    totalBitsPerSample[nfo.bitsPerSample] = SummaryTableItem(1, None)
 
-                            # прочая статистика
-                            if nfo.lossy:
-                                totalSummary[TS_LOSSY].value += 1
+                                # прочая статистика
+                                if nfo.lossy:
+                                    totalSummary[TS_LOSSY].value += 1
 
-                            for ixres, nres in enumerate(TS_BY_RES):
-                                if nfo.resolution == ixres:
-                                    totalSummary[nres].value += 1
+                                for ixres, nres in enumerate(TS_BY_RES):
+                                    if nfo.resolution == ixres:
+                                        totalSummary[nres].value += 1
 
-                            if nfo.missingTags:
-                                totalSummary[TS_MISTAGS].value += 1
+                                if nfo.missingTags:
+                                    totalSummary[TS_MISTAGS].value += 1
 
-                            #
-                            self.progressAudioFiles += 1
-                            self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
+                                #
+                                self.progressAudioFiles += 1
+                                self.labProgressAudioFiles.set_text(str(self.progressAudioFiles))
 
-                            # захерачим файл в статистику
-                            self.tvStats.store.append(destNode,
-                                (fname,
-                                 disp_int_val_k(nfo.sampleRate),
-                                 disp_int_val(nfo.channels),
-                                 disp_int_val(nfo.bitsPerSample),
-                                 disp_int_val(nfo.bitRate),
-                                 disp_bool(nfo.lossy, self.iconLossyAudio),
-                                 disp_bool(nfo.missingTags, self.iconMissingTags),
-                                 __disp_resolution(nfo),
-                                 disp_bool(bool(nfo.error), self.iconErrors),
-                                 markup_escape_text(nfo.get_hint_str()),
-                                 ))
+                                # захерачим файл в статистику
+                                self.tvStats.store.append(destNode,
+                                    (fname,
+                                     disp_int_val_k(nfo.sampleRate),
+                                     disp_int_val(nfo.channels),
+                                     disp_int_val(nfo.bitsPerSample),
+                                     disp_int_val(nfo.bitRate),
+                                     disp_bool(nfo.lossy, self.iconLossyAudio),
+                                     disp_bool(nfo.missingTags, self.iconMissingTags),
+                                     __disp_resolution(nfo),
+                                     disp_bool(bool(nfo.error), self.iconErrors),
+                                     markup_escape_text(nfo.get_hint_str()),
+                                     ))
 
-                        dirinfo.update_from_file(nfo)
+                            dirinfo.update_from_file(nfo)
 
                     #
                     self.progressBar.pulse()
@@ -510,7 +560,7 @@ class MainWnd():
         self.tvStats.refresh_end()
 
         if self.stopScanning:
-            self.__go_to_start_page()
+            self.phase_start_page()
             return
 
         #
@@ -569,10 +619,7 @@ class MainWnd():
         fill_summary_table(totalSummary, self.tvSummary, str, False)
 
         #
-        self.btnRun.set_label('Scan other directory')
-        self.pages.set_current_page(self.PAGE_STATS)
-        self.boxFileCtls.set_sensitive(True)
-        self.boxFileCtls.set_visible(True)
+        self.phase_result()
 
     def selStats_changed(self, _):
         self.btnCopyPath.set_sensitive(self.tvStats.get_selected_iter() is not None)
@@ -600,31 +647,69 @@ class MainWnd():
     def btnCopyPath_clicked(self, btn):
         self.copy_selected_path()
 
-    def __go_to_start_page(self):
-        self.fcStartDir.set_current_folder(self.cfg.lastDirectory)
-        self.pages.set_current_page(self.PAGE_START)
-        self.btnRun.set_label('Start')
-
-        self.boxFileCtls.set_visible(False)
-        self.boxFileCtls.set_sensitive(False)
-
     def fcStartDir_current_folder_changed(self, fc):
         self.cfg.lastDirectory = self.fcStartDir.get_current_folder()
         print('Search directory changed to "%s"' % self.cfg.lastDirectory)
 
-    def btnRun_clicked(self, btn):
-        p = self.pages.get_current_page()
+    def phase_start_page(self):
+        self.phase = self.PHASE_START_PAGE
 
-        if p == self.PAGE_START:
-            self.btnRun.set_label('Stop')
-            self.pages.set_current_page(self.PAGE_PROGRESS)
-            self.scan_statistics()
+        self.fcStartDir.set_current_folder(self.cfg.lastDirectory)
+
+        self.stopScanning = True
+
+        self.btnRun.set_label('Start')
+
+        self.boxStartSettings.set_sensitive(True)
+
+        self.boxFileCtls.set_visible(False)
+        self.boxFileCtls.set_sensitive(False)
+
+        self.boxProgress.set_visible(False)
+        self.boxProgress.set_sensitive(False)
+
+        self.pages.set_current_page(self.PAGE_START)
+
+    def phase_start_scan(self):
+        self.phase = self.PHASE_SCANNING
+
+        self.stopScanning = False
+        self.btnRun.set_label('Stop')
+
+        self.boxStartSettings.set_sensitive(False)
+
+        self.boxFileCtls.set_visible(False)
+        self.boxFileCtls.set_sensitive(False)
+
+        self.boxProgress.set_visible(True)
+        self.boxProgress.set_sensitive(True)
+
+        self.pages.set_current_page(self.PAGE_START)
+        self.scan_statistics()
+
+    def phase_result(self):
+        self.phase = self.PHASE_RESULT
+
+        self.btnRun.set_label('Scan other directory')
+
+        self.boxProgress.set_visible(False)
+        self.boxProgress.set_sensitive(False)
+
+        self.boxFileCtls.set_sensitive(True)
+        self.boxFileCtls.set_visible(True)
+
+        self.pages.set_current_page(self.PAGE_RESULT)
+
+    def phaseSwitchingWidget_clicked(self, wgt):
+        if self.phase == self.PHASE_START_PAGE:
+            # нажата кнопка "Start"
+            self.phase_start_scan()
+        elif self.phase == self.PHASE_SCANNING:
+            # нажата кнопка "Stop"
+            self.phase_start_page()
         else:
-            # p == self.PAGE_STATS
-            if p == self.PAGE_PROGRESS:
-                self.stopScanning = True
-
-            self.__go_to_start_page()
+            # нажата кнопка "Scan other directory"
+            self.phase_start_page()
 
     def handle_unhandled(self, exc_type, exc_value, exc_traceback):
         # дабы не зациклиться, если че рухнет в этом обработчике

@@ -430,6 +430,19 @@ class AudioFileFilter(Representable):
     def filetypes_to_str(self):
         return set_to_str(self.fileTypes)
 
+    def file_match_types(self, fname):
+        """Проверяет тип файла по расширению, возвращает булевское
+        значение (True - если файл нужного типа).
+
+        fname - строка, имя файла."""
+
+        fext = os.path.splitext(fname)[-1].lower()
+
+        # расширение проверяем в любом случае:
+        # если указано "проверять тип" - по выбранным типам
+        # иначе - по всем известным типам
+        return fext in (self.fileTypes if self.byFileTypes else DEFAULT_AUDIO_FILE_EXTS)
+
     def get_audio_file_info(self, fpath):
         """Проверка типа файла и извлечение параметров потока
         и метаданных из аудиофайла.
@@ -447,14 +460,6 @@ class AudioFileFilter(Representable):
                 return getattr(info, name)
             else:
                 return fallback
-
-        fext = os.path.splitext(fpath)[-1].lower()
-
-        # расширение проверяем в любом случае:
-        # если указано "проверять тип" - по выбранным типам
-        # иначе - по всем известным типам
-        if fext not in (self.fileTypes if self.byFileTypes else DEFAULT_AUDIO_FILE_EXTS):
-            return
 
         nfo = AudioFileInfo()
 
@@ -565,22 +570,107 @@ class AudioFileFilter(Representable):
         return nfo
 
 
-def __test_scan_directory(path, cfg):
-    print('\033[1m%s/\033[0m' % path)
+class AudioFileList(Representable):
+    """Дерево каталогов с аудиофайлами для последующей их обработки.
 
-    for fname in os.listdir(path):
-        fpath = os.path.join(path, fname)
+    Поля:
+        files       - экземпляр DirectoryItem;
+        totalFiles  - целое, количество всех найденных аудиофайлов."""
 
-        if os.path.isdir(fpath):
-            __test_scan_directory(fpath, cfg)
-        else:
-            print('\033[32m%s\033[0m' % fname)
-            nfo = cfg.filter.get_audio_file_info(fpath)
-            if nfo:
-                if not nfo.error:
-                    print(nfo)
+    class DirectoryItem():
+        __slots__ = 'isdir', 'name', 'children'
+
+        """Элемент каталога ФС.
+
+        Поля:
+        isdir       - булевское значение, True для каталога, False для файла;
+        name        - имя файла или каталога (только имя, не полный путь);
+        children    - список файлов и подкаталогов, если isdir==True,
+                      иначе None."""
+
+        def __init__(self, name, isdir):
+            self.name = name
+            self.isdir = isdir
+            self.children = [] if isdir else None
+
+    def __init__(self, fromDir, fileFilter, progress):
+        """Рекурсивный поиск файлов в указанном каталоге, сохранение имён
+        найденных файлов в дереве files (экземпляре AudioFileList).
+
+        Параметры:
+            fromDir     - строка, путь к каталогу, в котором следует
+                          искать файлы;
+            fileFilter  - экземпляр AudioFileFilter;
+            progress    - None или функция отображения прогресса;
+                          функция получает на входе два параметра:
+                          1й: строка с путём к текущему каталогу;
+                          2й: количество найденных файлов;
+                          функция должна возвращать булевское значение:
+                          True для продолжения поиска файлов,
+                          False для прекращения.
+
+        Поиск производится рекурсивно."""
+
+        if not callable(progress):
+            progress = None
+
+        self.files = self.DirectoryItem('', True)
+
+        self.totalFiles = 0
+
+        def __scan_dir(dest, path):
+            """Рекурсивный обход каталога.
+
+            dest    - экземпляр DirectoryItem, куда следует складывать
+                      имена файлов и подкаталогов;
+            path    - полный путь к каталогу.
+
+            Возвращает булевское значение - True для продолжения
+            поиска файлов, False для прекращения."""
+
+            if progress and not progress(path, self.totalFiles):
+                return False
+
+            for fname in os.listdir(path):
+                fpath = os.path.join(path, fname)
+
+                if os.path.isdir(fpath):
+                    subdir = self.DirectoryItem(fname, True)
+                    if not __scan_dir(subdir, fpath):
+                        return False
+
+                    if subdir.children:
+                        dest.children.append(subdir)
                 else:
-                    print('\033[31m*** Error: %s\033[0m' % nfo.error)
+                    if fileFilter.file_match_types(fname):
+                        dest.children.append(self.DirectoryItem(fname, False))
+                        self.totalFiles += 1
+
+            return True
+
+        __scan_dir(self.files, fromDir)
+
+
+def __test_scan_directory(cfg):
+    def __scan_progress(fpath, nFiles):
+        print('\033[1mscanning: %s/\033[0m' % fpath)
+        return True
+
+    tree = AudioFileList(cfg.lastDirectory, cfg.filter, __scan_progress)
+
+    print(tree)
+
+    def __process_diritem(diritem, parent):
+        if diritem.isdir:
+            fpath = os.path.join(parent, diritem.name)
+            print('\033[1m%s\033[0m' % fpath)
+
+            for i in diritem.children:
+                __process_diritem(i, fpath)
+        else:
+            print(diritem.name)
+
+    __process_diritem(tree.files, '')
 
 
 if __name__ == '__main__':
@@ -590,5 +680,5 @@ if __name__ == '__main__':
 
     cfg = asconfig.Config()
     cfg.load()
-    print(cfg)
-    __test_scan_directory(cfg.lastDirectory, cfg)
+    #print(cfg)
+    __test_scan_directory(cfg)
