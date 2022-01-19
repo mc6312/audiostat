@@ -376,6 +376,13 @@ class MainWnd():
         totalSummary[TS_WITH_ERRORS] = SummaryTableItem(0, self.iconErrors)
 
         #
+        # собираем статистику
+        #
+        self.tvStats.refresh_begin()
+
+        print('*** Starting collecting statistics in %s' % self.cfg.lastDirectory, file=sys.stderr)
+
+        #
         # проход 1: сбор списка файлов на обработку
         #
         self.labProgressFiles.set_text('Files found:')
@@ -396,43 +403,52 @@ class MainWnd():
         #
         self.currentFileNumber = 0
 
-        def __process_diritem(node, diritem, parent):
+        def __process_diritem(destNode, diritem, parent):
+            """Обработка элемента каталога.
+
+            Параметры:
+                destNode    - Gtk.TreeIter,
+                diritem     - AudioFileList.DirectoryItem,
+                parent      - строка, родительский каталог.
+
+            Возвращает булевское значение: False для прекращения
+            дальнейшего обхода дерева файлов."""
+
             fpath = os.path.join(parent, diritem.name)
+
+            if self.stopScanning:
+                return False
+
+            subNode = self.tvStats.store.append(destNode,
+                (diritem.name, '', '', '', '', None, None, None, None, None))
 
             if diritem.isdir:
                 # подкаталог
                 self.labProgressPath.set_text(fpath)
+                flush_gtk_events()
+
                 print('Scanning "%s"' % fpath, file=sys.stderr)
 
-                raise NotImplementedError('всю эту хуйню надо переписать!')
-
-                if not fprocess(fpath, **kwdata):
-                    return False
+                for i in diritem.children:
+                    if not __process_diritem(subNode, i, fpath):
+                        return False
+            else:
+                #if not fprocess(fpath, **kwdata):
+                #    return False
 
                 self.currentFileNumber += 1
-            else:
-                if not fprogress(fpath, self.currentFileNumber, self.totalFiles):
-                    return False
 
-                for i in diritem.children:
-                    if not __process_diritem(i, fpath):
-                        return False
+                self.labProgressFileCount.set_text('%d / %d' % (self.currentFileNumber, ftree.totalFiles))
+                self.progressBar.set_fraction(self.currentFileNumber / ftree.totalFiles)
+                flush_gtk_events()
 
             return True
 
         self.currentFileNumber = 0
-        __process_diritem(self.files, '')
+        __process_diritem(None, ftree.files, '')
 
-        return
-
+        '''
         def __process_directory(destNode, fdir):
-            """Обход подкаталога.
-
-            Параметры:
-                destNode    - Gtk.TreeIter,
-                fdir        - строка, каталог.
-
-            Возвращает экземпляр AudioDirectoryInfo."""
 
             dirinfo = AudioDirectoryInfo()
 
@@ -546,15 +562,7 @@ class MainWnd():
 
             dirinfo.flush()
             return dirinfo
-
-        #
-        # собираем статистику
-        #
-        self.tvStats.refresh_begin()
-
-        print('*** Starting collecting statistics in %s' % self.cfg.lastDirectory, file=sys.stderr)
-
-        dirinfo = __scan_directory(None, self.cfg.lastDirectory)
+        '''
 
         self.tvStats.sortColumn = self.STC_NAME
         self.tvStats.refresh_end()
